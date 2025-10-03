@@ -1,20 +1,22 @@
 {
   "expo": {
     "name": "ISDM-APP",
-    "slug": "ISDM-APP",
+    "slug": "isdm-app",
     "version": "1.0.0",
+    "scheme": "isdm-app",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
+    "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": {
-      "supportsTablet": true
-    },
+
+    "ios": { "supportsTablet": true },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -22,8 +24,8 @@
       },
       "edgeToEdgeEnabled": true
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+
+    "web": { "favicon": "./assets/favicon.png" }
   }
 }
+
