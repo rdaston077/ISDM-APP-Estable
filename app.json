@@ -5,7 +5,6 @@
     "version": "1.0.0",
     "scheme": "isdm-app",
     "orientation": "portrait",
-    
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
 
@@ -22,10 +21,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize"
     },
-
     "web": { "favicon": "./assets/favicon.png" }
   }
 }
-

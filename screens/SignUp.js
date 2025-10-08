@@ -1,49 +1,54 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import {
+  View, Text, TextInput, StyleSheet, Image,
+  TouchableOpacity, Alert, Platform,
+  KeyboardAvoidingView, ScrollView, Dimensions,
+} from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
 import { COLORS } from '../constants/colors';
 import { SPACING } from '../constants/spacing';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { isEmail, hasMin6 } from '../utils/validation';
+import HeaderBar from '../components/HeaderBar';
+
+const WIN_H = Dimensions.get('window').height;
+const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0.06)); // margen inferior 6%
 
 export default function SignUp({ navigation }) {
-  const [nombre, setNombre] = useState('');
+  const [nombre, setNombre]     = useState('');
   const [apellido, setApellido] = useState('');
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [show1, setShow1] = useState(false);
-  const [show2, setShow2] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const [errors, setErrors] = useState({
-    nombre: '', apellido: '', email: '', pass: '', confirm: ''
-  });
+  const [email, setEmail]       = useState('');
+  const [pass, setPass]         = useState('');
+  const [confirm, setConfirm]   = useState('');
+  const [show1, setShow1]       = useState(false);
+  const [show2, setShow2]       = useState(false);
+  const [loading, setLoading]   = useState(false);
 
   const handleSignUp = async () => {
-    const e = { nombre:'', apellido:'', email:'', pass:'', confirm:'' };
-
-    if (!nombre) e.nombre = 'El nombre es obligatorio';
-    if (!apellido) e.apellido = 'El apellido es obligatorio';
-
-    if (!email) e.email = 'El email es obligatorio';
-    else if (!isEmail(email)) e.email = 'Ingresá un email válido';
-
-    if (!pass) e.pass = 'La contraseña es obligatoria';
-    else if (!hasMin6(pass)) e.pass = 'Mínimo 6 caracteres';
-
-    if (!confirm) e.confirm = 'Confirmá la contraseña';
-    else if (pass !== confirm) e.confirm = 'Las contraseñas no coinciden';
-
-    setErrors(e);
-    if (Object.values(e).some(Boolean)) return;
+    if (!nombre || !apellido || !email || !pass || !confirm) {
+      Alert.alert('Todos los campos son obligatorios');
+      return;
+    }
+    if (!isEmail(email)) {
+      Alert.alert('Email inválido', 'Ingresá un email válido.');
+      return;
+    }
+    if (!hasMin6(pass)) {
+      Alert.alert('Contraseña débil', 'La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (pass !== confirm) {
+      Alert.alert('No coinciden', 'Las contraseñas no coinciden.');
+      return;
+    }
 
     try {
       setLoading(true);
       await createUserWithEmailAndPassword(auth, email.trim(), pass);
-      Alert.alert('Éxito', 'Cuenta creada. Ingresando…');
-    } catch {
+      Alert.alert('Éxito', 'Cuenta creada. Ahora podés iniciar sesión.');
+      navigation.navigate('Login');
+    } catch (err) {
       Alert.alert('Error', 'No se pudo crear la cuenta.');
     } finally {
       setLoading(false);
@@ -52,133 +57,164 @@ export default function SignUp({ navigation }) {
 
   return (
     <View style={s.safe}>
-      <View style={s.topBar}><Text style={s.topText}>Instituto Superior del Milagro</Text></View>
+      <HeaderBar onPressBell={() => alert('Próximamente: notificaciones')} showBack onBackPress={() => navigation.goBack()} />
 
-      <View style={s.container}>
-        <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
-        <Text style={s.title}>Regístrate</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.select({ ios: 64, android: 0 })}
+      >
+        <ScrollView
+          contentContainerStyle={[
+            s.scroll,
+            {
+              paddingHorizontal: SPACING.lg,
+              paddingTop: SPACING.xl,
+              paddingBottom: SPACING.lg + BOTTOM_6P,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
+          <Text style={s.title}>Regístrate</Text>
 
-        {/* Nombre */}
-        <Text style={s.label}>Nombre</Text>
-        <View style={[s.field, errors.nombre && s.fieldError]}>
-          <Ionicons name="person" size={20} color="#6b7280" style={s.leftIcon} />
-          <TextInput
-            style={s.input}
-            placeholder="Ingrese su nombre"
-            placeholderTextColor="#6b7280"
-            value={nombre}
-            onChangeText={setNombre}
-          />
-        </View>
-        {!!errors.nombre && <Text style={s.error}>{errors.nombre}</Text>}
+          {/* Nombre */}
+          <Text style={s.label}>Nombre</Text>
+          <View style={s.field}>
+            <Ionicons name="person" size={20} color="#6b7280" style={s.leftIcon} />
+            <TextInput
+              style={s.input}
+              placeholder="Ingrese su nombre"
+              placeholderTextColor="#6b7280"
+              value={nombre}
+              onChangeText={setNombre}
+              returnKeyType="next"
+            />
+          </View>
 
-        {/* Apellido */}
-        <Text style={s.label}>Apellido</Text>
-        <View style={[s.field, errors.apellido && s.fieldError]}>
-          <Ionicons name="person" size={20} color="#6b7280" style={s.leftIcon} />
-          <TextInput
-            style={s.input}
-            placeholder="Ingrese su apellido"
-            placeholderTextColor="#6b7280"
-            value={apellido}
-            onChangeText={setApellido}
-          />
-        </View>
-        {!!errors.apellido && <Text style={s.error}>{errors.apellido}</Text>}
+          {/* Apellido */}
+          <Text style={s.label}>Apellido</Text>
+          <View style={s.field}>
+            <Ionicons name="person" size={20} color="#6b7280" style={s.leftIcon} />
+            <TextInput
+              style={s.input}
+              placeholder="Ingrese su apellido"
+              placeholderTextColor="#6b7280"
+              value={apellido}
+              onChangeText={setApellido}
+              returnKeyType="next"
+            />
+          </View>
 
-        {/* Correo */}
-        <Text style={s.label}>Ingrese su correo electronico</Text>
-        <View style={[s.field, errors.email && s.fieldError]}>
-          <MaterialIcons name="email" size={20} color="#6b7280" style={s.leftIcon} />
-          <TextInput
-            style={s.input}
-            placeholder="Correo electrónico"
-            placeholderTextColor="#6b7280"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-        {!!errors.email && <Text style={s.error}>{errors.email}</Text>}
+          {/* Correo */}
+          <Text style={s.label}>Ingrese su correo electronico</Text>
+          <View style={s.field}>
+            <MaterialIcons name="email" size={20} color="#6b7280" style={s.leftIcon} />
+            <TextInput
+              style={s.input}
+              placeholder="Correo electrónico"
+              placeholderTextColor="#6b7280"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              returnKeyType="next"
+            />
+          </View>
 
-        {/* Contraseña */}
-        <Text style={s.label}>Ingrese una contraseña</Text>
-        <Text style={s.hint}>(La contraseña debe tener como mínimo 6 caracteres, una mayúscula y un número)</Text>
-        <View style={[s.field, errors.pass && s.fieldError]}>
-          <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
-          <TextInput
-            style={s.input}
-            placeholder="Contraseña"
-            placeholderTextColor="#6b7280"
-            secureTextEntry={!show1}
-            value={pass}
-            onChangeText={setPass}
-          />
-          <TouchableOpacity style={s.rightIcon} onPress={() => setShow1(v => !v)}>
-            <MaterialCommunityIcons name={show1 ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+          {/* Contraseña */}
+          <Text style={s.label}>Ingrese una contraseña</Text>
+          <View style={s.field}>
+            <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
+            <TextInput
+              style={s.input}
+              placeholder="Contraseña"
+              placeholderTextColor="#6b7280"
+              secureTextEntry={!show1}
+              value={pass}
+              onChangeText={setPass}
+              returnKeyType="next"
+            />
+            <TouchableOpacity style={s.rightIcon} onPress={() => setShow1(v => !v)}>
+              <MaterialCommunityIcons name={show1 ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+          <Text style={s.hint}>
+            (La contraseña debe tener como mínimo 6 caracteres, una mayúscula y un número)
+          </Text>
+
+          {/* Confirmar */}
+          <Text style={s.label}>Repita la contraseña</Text>
+          <View style={s.field}>
+            <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
+            <TextInput
+              style={s.input}
+              placeholder="Confirmar Contraseña"
+              placeholderTextColor="#6b7280"
+              secureTextEntry={!show2}
+              value={confirm}
+              onChangeText={setConfirm}
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={s.rightIcon} onPress={() => setShow2(v => !v)}>
+              <MaterialCommunityIcons name={show2 ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+
+          {/* CTA */}
+          <TouchableOpacity
+            disabled={loading}
+            onPress={handleSignUp}
+            activeOpacity={0.9}
+            style={[s.cta, loading && { opacity: 0.7 }]}
+          >
+            <Text style={s.ctaText}>{loading ? 'Creando…' : 'Crear cuenta'}</Text>
           </TouchableOpacity>
-        </View>
-        {!!errors.pass && <Text style={s.error}>{errors.pass}</Text>}
 
-        {/* Confirmar (SIN título, solo campo) */}
-        <View style={[s.field, { marginTop: SPACING.md }, errors.confirm && s.fieldError]}>
-          <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
-          <TextInput
-            style={s.input}
-            placeholder="Confirmar Contraseña"
-            placeholderTextColor="#6b7280"
-            secureTextEntry={!show2}
-            value={confirm}
-            onChangeText={setConfirm}
-          />
-          <TouchableOpacity style={s.rightIcon} onPress={() => setShow2(v => !v)}>
-            <MaterialCommunityIcons name={show2 ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={s.link}>Volver al inicio</Text>
           </TouchableOpacity>
-        </View>
-        {!!errors.confirm && <Text style={s.error}>{errors.confirm}</Text>}
-
-        {/* Botón 50% */}
-        <TouchableOpacity disabled={loading} onPress={handleSignUp} activeOpacity={0.9} style={[s.cta, loading && { opacity: 0.7 }]}>
-          <Text style={s.ctaText}>{loading ? 'Creando…' : 'Crear cuenta'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={s.link}>Volver al inicio</Text>
-        </TouchableOpacity>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  topBar: { height: 44, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
-  topText: { color: '#fff', fontWeight: '700' },
+  scroll: { flexGrow: 1, alignItems: 'center' },
 
-  container: { flex: 1, alignItems: 'center', paddingHorizontal: SPACING.lg, paddingTop: SPACING.xl },
-  logo: { width: 120, height: 120, marginBottom: SPACING.md },
+  logo: { width: 140, height: 140, marginBottom: SPACING.md },
   title: { fontSize: 26, fontWeight: '800', marginBottom: SPACING.sm, color: COLORS.text },
 
   label: { width: '100%', color: COLORS.text, marginTop: SPACING.md, marginBottom: 6, fontWeight: '600' },
 
   field: {
-    width: '100%', backgroundColor: '#f8fafc',
-    borderColor: COLORS.border, borderWidth: 1, borderRadius: 10,
-    paddingLeft: 40, paddingRight: 40, height: 48, justifyContent: 'center',
+    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingLeft: 40,
+    paddingRight: 40,
+    height: 48,
+    justifyContent: 'center',
   },
-  fieldError: { borderColor: COLORS.error },
   input: { color: COLORS.text, fontSize: 16, padding: 0 },
   leftIcon: { position: 'absolute', left: 12 },
   rightIcon: { position: 'absolute', right: 12 },
 
-  hint: { width: '100%', color: '#9b1c1c', fontSize: 12, marginBottom: 6 },
-  error: { width: '100%', color: COLORS.error, fontSize: 12, marginTop: 6 },
+  hint: { width: '100%', color: '#6b7280', fontSize: 12, marginTop: 6 },
 
   cta: {
-    width: '50%', alignSelf: 'center',
-    marginTop: SPACING.lg, height: 46, borderRadius: 10,
-    justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.primary,
+    width: '50%',
+    alignSelf: 'center',
+    marginTop: SPACING.lg,
+    height: 46,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
   },
   ctaText: { color: '#fff', fontWeight: '800' },
 

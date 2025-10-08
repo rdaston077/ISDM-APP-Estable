@@ -1,3 +1,4 @@
+// constants/spacing.js
 export const SPACING = {
   xs: 6,
   sm: 10,
@@ -5,4 +6,5 @@ export const SPACING = {
   lg: 20,
   xl: 28,
   radius: 10,
+
 };
