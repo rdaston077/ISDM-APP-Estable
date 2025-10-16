@@ -14,9 +14,10 @@ import { isEmail } from '../utils/validation';
 import HeaderBar from '../components/HeaderBar';
 
 const WIN_H = Dimensions.get('window').height;
+// Mantenemos la variable, aunque no se usará en s.centerWrap para centrado puro.
 const TOP_TWEAK = Math.max(16, Math.min(80, Math.round(WIN_H * 0.05)));
 const LOGO_GAP = Math.max(8, Math.min(96, Math.round(WIN_H * 0.03)));
-const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0)); // margen inferior 6%
+const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0)); // margen inferior 0% para login
 
 export default function Login({ navigation }) {
   const [email, setEmail]       = useState('');
@@ -27,6 +28,7 @@ export default function Login({ navigation }) {
   const [errors, setErrors]     = useState({ email: '' });
 
   const handleLogin = async () => {
+    // Validación básica
     if (!email || !password) {
       setErrors({ email: '' });
       Alert.alert('Todos los campos son obligatorios');
@@ -40,9 +42,13 @@ export default function Login({ navigation }) {
     try {
       setLoading(true);
       const emailNorm = email.trim().toLowerCase();
+
       await signInWithEmailAndPassword(auth, emailNorm, password);
+
+      // Redirecciona a 'Home' y resetea la pila de navegación
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } catch (err) {
+      // Mensajes claros para los casos más comunes
       switch (err?.code) {
         case 'auth/user-not-found':
           Alert.alert('Correo no registrado', 'Ese correo no está registrado.');
@@ -58,6 +64,7 @@ export default function Login({ navigation }) {
           Alert.alert('Demasiados intentos', 'Probá más tarde.');
           break;
         default:
+          console.error(err); // Se agregó el console.error del Código 1
           Alert.alert('Error', 'No se pudo iniciar sesión. Verificá tus datos.');
       }
     } finally {
@@ -83,7 +90,8 @@ export default function Login({ navigation }) {
             {
               paddingHorizontal: SPACING.lg,
               paddingBottom: SPACING.lg + BOTTOM_6P,
-              justifyContent: 'center',
+              // CLAVE: Centrado vertical puro
+              justifyContent: 'center', 
             },
           ]}
           keyboardShouldPersistTaps="handled"
@@ -94,71 +102,75 @@ export default function Login({ navigation }) {
               style={[s.logo, { marginBottom: SPACING.md + LOGO_GAP }]}
               resizeMode="contain"
             />
-            <Text style={s.title}>Iniciar sesión</Text>
 
-            {/* Email */}
-            <View style={[s.field, errors.email && s.fieldError]}>
-              <MaterialIcons name="email" size={20} color="#6b7280" style={s.leftIcon} />
-              <TextInput
-                style={s.input}
-                placeholder="Correo electrónico"
-                placeholderTextColor="#6b7280"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-                returnKeyType="next"
-              />
-            </View>
-            {!!errors.email && <Text style={s.error}>{errors.email}</Text>}
+            {/* CLAVE: Contenedor del Formulario con estilo de TARJETA (formCard) */}
+            <View style={s.formCard}> 
+              <Text style={s.title}>Iniciar sesión</Text>
 
-            {/* Password */}
-            <View style={s.field}>
-              <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
-              <TextInput
-                style={s.input}
-                placeholder="Ingrese su contraseña"
-                placeholderTextColor="#6b7280"
-                secureTextEntry={!showPass}
-                value={password}
-                onChangeText={setPassword}
-                returnKeyType="done"
-              />
-              <TouchableOpacity style={s.rightIcon} onPress={() => setShowPass(v => !v)}>
-                <MaterialCommunityIcons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+              {/* Email */}
+              <View style={[s.field, errors.email && s.fieldError]}>
+                <MaterialIcons name="email" size={20} color="#6b7280" style={s.leftIcon} />
+                <TextInput
+                  style={s.input}
+                  placeholder="Correo electrónico"
+                  placeholderTextColor="#6b7280"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                  returnKeyType="next"
+                />
+              </View>
+              {!!errors.email && <Text style={s.error}>{errors.email}</Text>}
+
+              {/* Password */}
+              <View style={s.field}>
+                <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
+                <TextInput
+                  style={s.input}
+                  placeholder="Ingrese su contraseña"
+                  placeholderTextColor="#6b7280"
+                  secureTextEntry={!showPass}
+                  value={password}
+                  onChangeText={setPassword}
+                  returnKeyType="done"
+                />
+                <TouchableOpacity style={s.rightIcon} onPress={() => setShowPass(v => !v)}>
+                  <MaterialCommunityIcons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Recuérdame + ¿Olvidó? */}
+              <View style={s.rowRememberForgot}>
+                <Pressable style={s.rememberRow} onPress={() => setRemember(r => !r)}>
+                  <View style={[s.checkbox, remember && s.checkboxOn]}>
+                    {remember && <Ionicons name="checkmark" size={14} color="#fff" />}
+                  </View>
+                  <Text style={s.rememberText}>Recuérdame</Text>
+                </Pressable>
+
+                <TouchableOpacity onPress={() => Alert.alert('Recuperar', 'Implementaremos recuperación más adelante.')}>
+                  <Text style={s.link}>¿Olvidó su contraseña?</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* CTA */}
+              <TouchableOpacity
+                disabled={loading}
+                onPress={handleLogin}
+                activeOpacity={0.9}
+                style={[s.cta, loading && { opacity: 0.7 }]}
+              >
+                <Text style={s.ctaText}>{loading ? 'Ingresando…' : 'Iniciar sesión'}</Text>
               </TouchableOpacity>
-            </View>
 
-            {/* Recuérdame + ¿Olvidó? */}
-            <View style={s.rowRememberForgot}>
-              <Pressable style={s.rememberRow} onPress={() => setRemember(r => !r)}>
-                <View style={[s.checkbox, remember && s.checkboxOn]}>
-                  {remember && <Ionicons name="checkmark" size={14} color="#fff" />}
-                </View>
-                <Text style={s.rememberText}>Recuérdame</Text>
-              </Pressable>
-
-              <TouchableOpacity onPress={() => Alert.alert('Recuperar', 'Implementaremos recuperación más adelante.')}>
-                <Text style={s.link}>¿Olvidó su contraseña?</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* CTA */}
-            <TouchableOpacity
-              disabled={loading}
-              onPress={handleLogin}
-              activeOpacity={0.9}
-              style={[s.cta, loading && { opacity: 0.7 }]}
-            >
-              <Text style={s.ctaText}>{loading ? 'Ingresando…' : 'Iniciar sesión'}</Text>
-            </TouchableOpacity>
-
-            {/* Link a SignUp */}
-            <View style={s.signupRow}>
-              <Text style={s.small}>¿No tenes cuenta?</Text>
-              <TouchableOpacity onPress={goToSignUp} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.signupBtn}>
-                <Text style={s.linkInline}>Crear una cuenta</Text>
-              </TouchableOpacity>
+              {/* Link a SignUp */}
+              <View style={s.signupRow}>
+                <Text style={s.small}>¿No tenes cuenta?</Text>
+                <TouchableOpacity onPress={goToSignUp} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.signupBtn}>
+                  <Text style={s.linkInline}>Crear una cuenta</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -167,13 +179,31 @@ export default function Login({ navigation }) {
   );
 }
 
+// -------------------------------------------------------------------
+// ESTILOS UNIFICADOS
+// -------------------------------------------------------------------
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
+  // flexGrow: 1 y alignItems: 'center' es clave para el centrado horizontal en el ScrollView
   scroll: { flexGrow: 1, alignItems: 'center' },
 
-  centerWrap: { width: '100%', alignItems: 'center', marginTop: -TOP_TWEAK },
+  // CLAVE: Se elimina 'marginTop: -TOP_TWEAK' para centrado puro (como en Codigo 1)
+  centerWrap: { width: '100%', alignItems: 'center' },
   logo: { width: 140, height: 140 },
-  title: { fontSize: 26, fontWeight: '800', marginBottom: SPACING.md, color: COLORS.text },
+  // Se añade 'textAlign: 'center'' para el título dentro de la tarjeta
+  title: { fontSize: 26, fontWeight: '800', marginBottom: SPACING.md, color: COLORS.text, textAlign: 'center' },
+
+  // CLAVE: Estilo de la tarjeta del formulario (tomado del Codigo 1)
+  formCard: {
+    width: '100%',
+    backgroundColor: 'hsla(300, 33%, 99%, 1.00)',
+    padding: SPACING.lg,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+  },
 
   field: {
     width: '100%',

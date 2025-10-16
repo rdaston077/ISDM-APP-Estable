@@ -9,11 +9,17 @@ import { auth } from '../src/config/firebaseConfig';
 import { COLORS } from '../constants/colors';
 import { SPACING } from '../constants/spacing';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { isEmail, hasMin6 } from '../utils/validation';
+import { isEmail } from '../utils/validation'; // ← dejamos isEmail; la validación de pass la hacemos aquí
 import HeaderBar from '../components/HeaderBar';
 
 const WIN_H = Dimensions.get('window').height;
 const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0.06)); // margen inferior 6%
+
+// --- Reglas de contraseña ---
+const hasMin6 = (v = '') => String(v).length >= 6;
+const hasUpper = (v = '') => /[A-ZÁÉÍÓÚÑ]/.test(v);
+const hasDigit = (v = '') => /\d/.test(v);
+const passValidAll = (v = '') => hasMin6(v) && hasUpper(v) && hasDigit(v);
 
 export default function SignUp({ navigation }) {
   const [nombre, setNombre]     = useState('');
@@ -34,12 +40,15 @@ export default function SignUp({ navigation }) {
       Alert.alert('Email inválido', 'Ingresá un email válido.');
       return;
     }
-    if (!hasMin6(pass)) {
-      Alert.alert('Contraseña débil', 'La contraseña debe tener al menos 6 caracteres.');
+    if (!passValidAll(pass)) {
+      Alert.alert(
+        'Contraseña débil',
+        'La contraseña debe tener al menos 6 caracteres, una mayúscula y un número.'
+      );
       return;
     }
     if (pass !== confirm) {
-      Alert.alert('No coinciden', 'Las contraseñas no coinciden.');
+      Alert.alert('Verifica las contraseñas', 'Las contraseñas no coinciden.');
       return;
     }
 
@@ -54,6 +63,8 @@ export default function SignUp({ navigation }) {
       setLoading(false);
     }
   };
+
+  const isPassOk = passValidAll(pass); // ← para cambiar el color de los “puntos”
 
   return (
     <View style={s.safe}>
@@ -84,7 +95,7 @@ export default function SignUp({ navigation }) {
             <Ionicons name="person" size={20} color="#6b7280" style={s.leftIcon} />
             <TextInput
               style={s.input}
-              placeholder="Ingrese su nombre"
+              placeholder="Ingresa tu nombre"
               placeholderTextColor="#6b7280"
               value={nombre}
               onChangeText={setNombre}
@@ -98,7 +109,7 @@ export default function SignUp({ navigation }) {
             <Ionicons name="person" size={20} color="#6b7280" style={s.leftIcon} />
             <TextInput
               style={s.input}
-              placeholder="Ingrese su apellido"
+              placeholder="Ingresa tu apellido"
               placeholderTextColor="#6b7280"
               value={apellido}
               onChangeText={setApellido}
@@ -107,12 +118,12 @@ export default function SignUp({ navigation }) {
           </View>
 
           {/* Correo */}
-          <Text style={s.label}>Ingrese su correo electronico</Text>
+          <Text style={s.label}>Ingresa tu correo electronico</Text>
           <View style={s.field}>
             <MaterialIcons name="email" size={20} color="#6b7280" style={s.leftIcon} />
             <TextInput
               style={s.input}
-              placeholder="Correo electrónico"
+              placeholder="tucorreo@ejemplo.com"
               placeholderTextColor="#6b7280"
               autoCapitalize="none"
               keyboardType="email-address"
@@ -123,11 +134,11 @@ export default function SignUp({ navigation }) {
           </View>
 
           {/* Contraseña */}
-          <Text style={s.label}>Ingrese una contraseña</Text>
+          <Text style={s.label}>Ingresa una contraseña</Text>
           <View style={s.field}>
             <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
             <TextInput
-              style={s.input}
+              style={[s.input, isPassOk && s.inputValid]}   // ← verde cuando cumple
               placeholder="Contraseña"
               placeholderTextColor="#6b7280"
               secureTextEntry={!show1}
@@ -144,7 +155,7 @@ export default function SignUp({ navigation }) {
           </Text>
 
           {/* Confirmar */}
-          <Text style={s.label}>Repita la contraseña</Text>
+          <Text style={s.label}>Repite la contraseña</Text>
           <View style={s.field}>
             <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
             <TextInput
@@ -201,6 +212,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   input: { color: COLORS.text, fontSize: 16, padding: 0 },
+  inputValid: { color: '#10b981' }, // ← verde (emerald) cuando cumple
   leftIcon: { position: 'absolute', left: 12 },
   rightIcon: { position: 'absolute', right: 12 },
 

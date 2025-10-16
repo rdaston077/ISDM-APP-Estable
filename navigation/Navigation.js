@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import Login from '../screens/Login';
 import SignUp from '../screens/SignUp';
-import Home from '../screens/Home';
+import Tabs from './Tabs';
 
 const Stack = createNativeStackNavigator();
 
@@ -15,7 +15,9 @@ export default function Navigation() {
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="SignUp" component={SignUp} />
-        <Stack.Screen name="Home" component={Home} />
+        {/* Contenedor de tabs (Inicio, Estudiantes, Perfil, Cerrar sesión).
+            Dentro del tab “Inicio” está el HomeStack con Home, Carreras y Contacto. */}
+        <Stack.Screen name="Home" component={Tabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );
