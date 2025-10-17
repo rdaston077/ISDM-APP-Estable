@@ -91,7 +91,7 @@ export default function Login({ navigation }) {
               paddingHorizontal: SPACING.lg,
               paddingBottom: SPACING.lg + BOTTOM_6P,
               // CLAVE: Centrado vertical puro
-              justifyContent: 'center', 
+              justifyContent: 'center',
             },
           ]}
           keyboardShouldPersistTaps="handled"
@@ -104,7 +104,7 @@ export default function Login({ navigation }) {
             />
 
             {/* CLAVE: Contenedor del Formulario con estilo de TARJETA (formCard) */}
-            <View style={s.formCard}> 
+            <View style={s.formCard}>
               <Text style={s.title}>Iniciar sesión</Text>
 
               {/* Email */}

@@ -9,7 +9,7 @@ export default function Profile() {
     <View style={s.safe}>
       <HeaderBar title="Perfil" />
       <View style={s.body}>
-        <Text style={s.text}>Tu perfil (pronto)</Text>
+        <Text style={s.text}>Perfil (pronto)</Text>
       </View>
     </View>
   );
