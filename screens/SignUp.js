@@ -1,25 +1,30 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, Image,
-  TouchableOpacity, Alert, Platform,
-  KeyboardAvoidingView, ScrollView, Dimensions,
+  TouchableOpacity, Platform, KeyboardAvoidingView,
+  ScrollView, Dimensions,
 } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
 import { COLORS } from '../constants/colors';
 import { SPACING } from '../constants/spacing';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { isEmail } from '../utils/validation'; // ← dejamos isEmail; la validación de pass la hacemos aquí
+import { isEmail } from '../utils/validation';
 import HeaderBar from '../components/HeaderBar';
+import ISDMAlert from '../components/ISDMAlert';
 
 const WIN_H = Dimensions.get('window').height;
-const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0.06)); // margen inferior 6%
+const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0.06));
 
-// --- Reglas de contraseña ---
+// Reglas de contraseña ---
 const hasMin6 = (v = '') => String(v).length >= 6;
 const hasUpper = (v = '') => /[A-ZÁÉÍÓÚÑ]/.test(v);
 const hasDigit = (v = '') => /\d/.test(v);
 const passValidAll = (v = '') => hasMin6(v) && hasUpper(v) && hasDigit(v);
+
+// --- Regla: permitir solo letras (con acentos/ñ), espacios y apóstrofo ---
+const onlyLetters = (s = '') =>
+  s.replace(/[^A-Za-zÁÉÍÓÚÜáéíóúüÑñÀ-ÿ' -]/g, '');
 
 export default function SignUp({ navigation }) {
   const [nombre, setNombre]     = useState('');
@@ -31,59 +36,70 @@ export default function SignUp({ navigation }) {
   const [show2, setShow2]       = useState(false);
   const [loading, setLoading]   = useState(false);
 
+  // --- ALERTA personalizada ---
+  const [alert, setAlert] = useState({
+    visible: false, title: '', message: '', type: 'info',
+    onConfirm: () => setAlert(a => ({ ...a, visible: false })),
+  });
+  const showAlert = (opts) =>
+    setAlert(a => ({ ...a, visible: true, ...opts, onConfirm: opts?.onConfirm || (() => setAlert(p => ({ ...p, visible: false }))) }));
+
   const handleSignUp = async () => {
     if (!nombre || !apellido || !email || !pass || !confirm) {
-      Alert.alert('Todos los campos son obligatorios');
+      showAlert({ title: 'Todos los campos son obligatorios', type: 'warning' });
       return;
     }
     if (!isEmail(email)) {
-      Alert.alert('Email inválido', 'Ingresá un email válido.');
+      showAlert({ title: 'Email inválido', message: 'Ingresá un email válido.', type: 'error' });
       return;
     }
     if (!passValidAll(pass)) {
-      Alert.alert(
-        'Contraseña débil',
-        'La contraseña debe tener al menos 6 caracteres, una mayúscula y un número.'
-      );
+      showAlert({
+        title: 'Contraseña débil',
+        message: 'La contraseña debe tener al menos 6 caracteres, una mayúscula, una minuscula y un número.',
+        type: 'warning',
+      });
       return;
     }
     if (pass !== confirm) {
-      Alert.alert('Verifica las contraseñas', 'Las contraseñas no coinciden.');
+      showAlert({ title: 'Verifica las contraseñas', message: 'Las contraseñas no coinciden.', type: 'error' });
       return;
     }
 
     try {
       setLoading(true);
       await createUserWithEmailAndPassword(auth, email.trim(), pass);
-      Alert.alert('Éxito', 'Cuenta creada. Ahora podés iniciar sesión.');
-      navigation.navigate('Login');
+      showAlert({
+        title: 'Éxito',
+        message: 'Cuenta creada. Ahora podés iniciar sesión.',
+        type: 'success',
+        onConfirm: () => {
+          setAlert(a => ({ ...a, visible: false }));
+          navigation.navigate('Login');
+        },
+      });
     } catch (err) {
-      Alert.alert('Error', 'No se pudo crear la cuenta.');
+      showAlert({ title: 'Error', message: 'No se pudo crear la cuenta.', type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
-  const isPassOk = passValidAll(pass); // ← para cambiar el color de los “puntos”
+  const isPassOk = passValidAll(pass);
 
   return (
     <View style={s.safe}>
-      <HeaderBar onPressBell={() => alert('Próximamente: notificaciones')} showBack onBackPress={() => navigation.goBack()} />
+      {/* Header sin campana */}
+      <HeaderBar
+        showBack
+        onBackPress={() => navigation.goBack()}
+        showBell={false}
+      />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.select({ ios: 64, android: 0 })}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.select({ ios: 64, android: 0 })}>
         <ScrollView
-          contentContainerStyle={[
-            s.scroll,
-            {
-              paddingHorizontal: SPACING.lg,
-              paddingTop: SPACING.xl,
-              paddingBottom: SPACING.lg + BOTTOM_6P,
-            },
-          ]}
+          contentContainerStyle={[s.scroll, { paddingHorizontal: SPACING.lg, paddingTop: SPACING.xl, paddingBottom: SPACING.lg + BOTTOM_6P }]}
           keyboardShouldPersistTaps="handled"
         >
           <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
@@ -98,7 +114,7 @@ export default function SignUp({ navigation }) {
               placeholder="Ingresa tu nombre"
               placeholderTextColor="#6b7280"
               value={nombre}
-              onChangeText={setNombre}
+              onChangeText={(t) => setNombre(onlyLetters(t))}
               returnKeyType="next"
             />
           </View>
@@ -112,25 +128,17 @@ export default function SignUp({ navigation }) {
               placeholder="Ingresa tu apellido"
               placeholderTextColor="#6b7280"
               value={apellido}
-              onChangeText={setApellido}
+              onChangeText={(t) => setApellido(onlyLetters(t))}
               returnKeyType="next"
             />
           </View>
 
-          {/* Correo */}
+          {/* Email */}
           <Text style={s.label}>Ingresa tu correo electronico</Text>
           <View style={s.field}>
             <MaterialIcons name="email" size={20} color="#6b7280" style={s.leftIcon} />
-            <TextInput
-              style={s.input}
-              placeholder="tucorreo@ejemplo.com"
-              placeholderTextColor="#6b7280"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-              returnKeyType="next"
-            />
+            <TextInput style={s.input} placeholder="tucorreo@ejemplo.com" placeholderTextColor="#6b7280"
+              autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} returnKeyType="next" />
           </View>
 
           {/* Contraseña */}
@@ -138,7 +146,7 @@ export default function SignUp({ navigation }) {
           <View style={s.field}>
             <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
             <TextInput
-              style={[s.input, isPassOk && s.inputValid]}   // ← verde cuando cumple
+              style={[s.input, isPassOk && s.inputValid]}
               placeholder="Contraseña"
               placeholderTextColor="#6b7280"
               secureTextEntry={!show1}
@@ -150,11 +158,9 @@ export default function SignUp({ navigation }) {
               <MaterialCommunityIcons name={show1 ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
             </TouchableOpacity>
           </View>
-          <Text style={s.hint}>
-            (La contraseña debe tener como mínimo 6 caracteres, una mayúscula y un número)
-          </Text>
+          <Text style={s.hint}>(La contraseña debe tener como mínimo 6 caracteres, una mayúscula, una minuscula y un número)</Text>
 
-          {/* Confirmar */}
+          {/* Confirmar Contraseña */}
           <Text style={s.label}>Repite la contraseña</Text>
           <View style={s.field}>
             <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
@@ -172,13 +178,7 @@ export default function SignUp({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* CTA */}
-          <TouchableOpacity
-            disabled={loading}
-            onPress={handleSignUp}
-            activeOpacity={0.9}
-            style={[s.cta, loading && { opacity: 0.7 }]}
-          >
+          <TouchableOpacity disabled={loading} onPress={handleSignUp} activeOpacity={0.9} style={[s.cta, loading && { opacity: 0.7 }]}>
             <Text style={s.ctaText}>{loading ? 'Creando…' : 'Crear cuenta'}</Text>
           </TouchableOpacity>
 
@@ -187,6 +187,15 @@ export default function SignUp({ navigation }) {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ISDMAlert
+        visible={alert.visible}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+        onConfirm={alert.onConfirm}
+        onClose={() => setAlert(a => ({ ...a, visible: false }))}
+      />
     </View>
   );
 }
@@ -199,8 +208,8 @@ const s = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '800', marginBottom: SPACING.sm, color: COLORS.text },
 
   label: { width: '100%', color: COLORS.text, marginTop: SPACING.md, marginBottom: 6, fontWeight: '600' },
-
-  field: {
+  field:
+  {
     width: '100%',
     backgroundColor: '#f8fafc',
     borderColor: COLORS.border,
@@ -212,13 +221,13 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   input: { color: COLORS.text, fontSize: 16, padding: 0 },
-  inputValid: { color: '#10b981' }, // ← verde (emerald) cuando cumple
+  inputValid: { color: '#10b981' },
   leftIcon: { position: 'absolute', left: 12 },
   rightIcon: { position: 'absolute', right: 12 },
 
   hint: { width: '100%', color: '#6b7280', fontSize: 12, marginTop: 6 },
-
-  cta: {
+  cta:
+  {
     width: '50%',
     alignSelf: 'center',
     marginTop: SPACING.lg,

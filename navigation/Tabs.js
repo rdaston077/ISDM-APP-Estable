@@ -6,12 +6,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { signOut } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Home from '../screens/Home';
 import Carreras from '../screens/Carreras';
 import Contacto from '../screens/Contacto';
-import Students from '../screens/Students';
 import Profile from '../screens/Profile';
+import StudentsStack from './StudentsStack';
 import { COLORS } from '../constants/colors';
 import { auth } from '../src/config/firebaseConfig';
 
@@ -39,6 +40,7 @@ export default function Tabs() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      await AsyncStorage.removeItem('rememberMe'); // limpiar flag
       rootNav.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (e) {
       Alert.alert('Error', 'No se pudo cerrar sesión');
@@ -77,7 +79,7 @@ export default function Tabs() {
       })}
     >
       <Tab.Screen name="Inicio" component={HomeStackNav} />
-      <Tab.Screen name="Estudiantes" component={Students} />
+      <Tab.Screen name="Estudiantes" component={StudentsStack} />
       <Tab.Screen name="Perfil" component={Profile} />
       <Tab.Screen
         name="Cerrar sesión"

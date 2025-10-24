@@ -1,21 +1,19 @@
 // screens/Contacto.js
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Platform,
-  KeyboardAvoidingView,
-  Alert,
-  TouchableOpacity,
+  View, Text, TextInput, StyleSheet, ScrollView,
+  Platform, KeyboardAvoidingView, TouchableOpacity,
   Keyboard,
 } from 'react-native';
 import HeaderBar from '../components/HeaderBar';
 import { COLORS } from '../constants/colors';
 import { SPACING } from '../constants/spacing';
 import { isEmail } from '../utils/validation';
+import ISDMAlert from '../components/ISDMAlert';
+
+// --- Regla: permitir solo letras (con acentos/ñ), espacios, guion y apóstrofo ---
+const onlyLetters = (s = '') =>
+  s.replace(/[^A-Za-zÁÉÍÓÚÜáéíóúüÑñÀ-ÿ' -]/g, '');
 
 export default function Contacto({ navigation }) {
   const [nombre, setNombre] = useState('');
@@ -26,11 +24,19 @@ export default function Contacto({ navigation }) {
   const [mensaje, setMensaje] = useState('');
   const [sending, setSending] = useState(false);
 
+  // --- ALERTA personalizada ---
+  const [alert, setAlert] = useState({
+    visible: false, title: '', message: '', type: 'info',
+    onConfirm: () => setAlert(a => ({ ...a, visible: false })),
+  });
+  const showAlert = (opts) =>
+    setAlert(a => ({ ...a, visible: true, ...opts, onConfirm: opts?.onConfirm || (() => setAlert(p => ({ ...p, visible: false }))) }));
+
   const handleSend = () => {
     if (sending) return;
     Keyboard.dismiss();
+    
 
-    // espacios nermalizados
     const vNombre = nombre.trim();
     const vMail = mail.trim().toLowerCase();
     const vTel = telefono.trim();
@@ -38,22 +44,29 @@ export default function Contacto({ navigation }) {
     const vCarr = carrera.trim();
     const vMsg = mensaje.trim();
 
-    // Validaciones
+
     if (!vNombre || !vMail || !vTel || !vProv || !vCarr || !vMsg) {
-      Alert.alert('Todos los campos son obligatorios');
+      showAlert({ title: 'Todos los campos son obligatorios', type: 'warning' });
       return;
     }
     if (!isEmail(vMail)) {
-      Alert.alert('Email inválido', 'Ingresá un email válido.');
+      showAlert({ title: 'Email inválido', message: 'Ingresá un email válido.', type: 'error' });
       return;
     }
 
     setSending(true);
-    // para integrar con email/Firestore/Cloud Function más adelante.
+
     setTimeout(() => {
       setSending(false);
-      Alert.alert('Enviado', '¡Gracias! Te contactaremos a la brevedad.');
-      navigation.goBack();
+      showAlert({
+        title: 'Enviado',
+        message: '¡Gracias! Te contactaremos a la brevedad.',
+        type: 'success',
+        onConfirm: () => {
+          setAlert(a => ({ ...a, visible: false }));
+          navigation.goBack();
+        },
+      });
     }, 600);
   };
 
@@ -67,16 +80,18 @@ export default function Contacto({ navigation }) {
             Contactanos para recibir más información sobre nuestras carreras.
           </Text>
 
+          {/*Nombre*/}
           <Text style={s.label}>Nombre</Text>
           <TextInput
             style={s.input}
             placeholder="Tu nombre y apellido"
             placeholderTextColor="#6b7280"
             value={nombre}
-            onChangeText={setNombre}
+            onChangeText={(t) => setNombre(onlyLetters(t))}
             returnKeyType="next"
           />
 
+          {/*Correo*/}
           <Text style={s.label}>Mail</Text>
           <TextInput
             style={s.input}
@@ -89,6 +104,7 @@ export default function Contacto({ navigation }) {
             returnKeyType="next"
           />
 
+          {/*Teléfono*/}
           <Text style={s.label}>Teléfono / WhatsApp</Text>
           <TextInput
             style={s.input}
@@ -100,16 +116,18 @@ export default function Contacto({ navigation }) {
             returnKeyType="next"
           />
 
+          {/*Provincia*/}
           <Text style={s.label}>Provincia</Text>
           <TextInput
             style={s.input}
             placeholder="Ej: Salta"
             placeholderTextColor="#6b7280"
             value={provincia}
-            onChangeText={setProvincia}
+            onChangeText={(t) => setProvincia(onlyLetters(t))}
             returnKeyType="next"
           />
 
+          {/*Carrera*/}
           <Text style={s.label}>Carrera</Text>
           <TextInput
             style={s.input}
@@ -120,6 +138,7 @@ export default function Contacto({ navigation }) {
             returnKeyType="next"
           />
 
+          {/*Mensaje*/}
           <Text style={s.label}>Mensaje</Text>
           <TextInput
             style={[s.input, s.textarea]}
@@ -133,7 +152,7 @@ export default function Contacto({ navigation }) {
 
           <View style={{ height: SPACING.md }} />
 
-          {/* Botón enviar */}
+
           <TouchableOpacity
             style={[s.cta, sending && { opacity: 0.7 }]}
             activeOpacity={0.9}
@@ -148,6 +167,15 @@ export default function Contacto({ navigation }) {
           <View style={{ height: SPACING.xl }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ISDMAlert
+        visible={alert.visible}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+        onConfirm={alert.onConfirm}
+        onClose={() => setAlert(a => ({ ...a, visible: false }))}
+      />
     </View>
   );
 }

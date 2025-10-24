@@ -1,23 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, Image,
-  TouchableOpacity, Alert, Platform,
-  KeyboardAvoidingView, ScrollView,
-  Dimensions, Pressable,
+  TouchableOpacity, Platform, KeyboardAvoidingView,
+  ScrollView, Dimensions, Pressable,
 } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
 import { COLORS } from '../constants/colors';
 import { SPACING } from '../constants/spacing';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { isEmail } from '../utils/validation';
 import HeaderBar from '../components/HeaderBar';
+import ISDMAlert from '../components/ISDMAlert';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WIN_H = Dimensions.get('window').height;
-// Mantenemos la variable, aunque no se usará en s.centerWrap para centrado puro.
+
 const TOP_TWEAK = Math.max(16, Math.min(80, Math.round(WIN_H * 0.05)));
 const LOGO_GAP = Math.max(8, Math.min(96, Math.round(WIN_H * 0.03)));
-const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0)); // margen inferior 0% para login
+const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0));
 
 export default function Login({ navigation }) {
   const [email, setEmail]       = useState('');
@@ -27,11 +28,35 @@ export default function Login({ navigation }) {
   const [loading, setLoading]   = useState(false);
   const [errors, setErrors]     = useState({ email: '' });
 
+  // --- ALERTA personalizada ---
+  const [alert, setAlert] = useState({
+    visible: false, title: '', message: '', type: 'info',
+    onConfirm: () => setAlert(a => ({ ...a, visible: false })),
+  });
+  const showAlert = (opts) =>
+    setAlert(a => ({ ...a, visible: true, ...opts, onConfirm: opts?.onConfirm || (() => setAlert(p => ({ ...p, visible: false }))) }));
+
+  // Auto-redirect si ya hay sesión + "Recuérdame" activo
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const remembered = await AsyncStorage.getItem('rememberMe'); // 'true' | 'false' | null
+        if (mounted && remembered === 'true' && auth.currentUser) {
+          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        }
+      } catch (e) {
+        // no-op
+      }
+    })();
+    return () => { mounted = false; };
+  }, [navigation]);
+
   const handleLogin = async () => {
-    // Validación básica
+
     if (!email || !password) {
       setErrors({ email: '' });
-      Alert.alert('Todos los campos son obligatorios');
+      showAlert({ title: 'Todos los campos son obligatorios', type: 'warning' });
       return;
     }
     const e = { email: '' };
@@ -45,30 +70,67 @@ export default function Login({ navigation }) {
 
       await signInWithEmailAndPassword(auth, emailNorm, password);
 
-      // Redirecciona a 'Home' y resetea la pila de navegación
+      // Guardar flag de "Recuérdame"
+      await AsyncStorage.setItem('rememberMe', remember ? 'true' : 'false');
+
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-    } catch (err) {
-      // Mensajes claros para los casos más comunes
+
+    } catch (err)
+    {
       switch (err?.code) {
         case 'auth/user-not-found':
-          Alert.alert('Correo no registrado', 'Ese correo no está registrado.');
+          showAlert({ title: 'Correo no registrado', message: 'Ese correo no está registrado.', type: 'error' });
           break;
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          Alert.alert('Verificá tus datos', 'Mail no registrado ó contraseña incorrecta.');
+          showAlert({ title: 'Verificá tus datos', message: 'Mail no registrado ó contraseña incorrecta.', type: 'error' });
           break;
         case 'auth/invalid-email':
-          Alert.alert('Email inválido', 'Revisá el formato del correo.');
+          showAlert({ title: 'Email inválido', message: 'Revisá el formato del correo.', type: 'error' });
           break;
         case 'auth/too-many-requests':
-          Alert.alert('Demasiados intentos', 'Probá más tarde.');
+          showAlert({ title: 'Demasiados intentos', message: 'Probá más tarde.', type: 'warning' });
           break;
         default:
-          console.error(err); // Se agregó el console.error del Código 1
-          Alert.alert('Error', 'No se pudo iniciar sesión. Verificá tus datos.');
+          console.error(err);
+          showAlert({ title: 'Error', message: 'No se pudo iniciar sesión. Verificá tus datos.', type: 'error' });
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ Recuperación de contraseña
+  const handleForgotPassword = async () => {
+    const emailNorm = email.trim().toLowerCase();
+    if (!emailNorm) {
+      showAlert({ title: 'Recuperar contraseña', message: 'Ingresá tu correo para enviarte el enlace de recuperación.', type: 'info' });
+      return;
+    }
+    if (!isEmail(emailNorm)) {
+      showAlert({ title: 'Email inválido', message: 'Ingresá un correo válido para continuar.', type: 'warning' });
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, emailNorm);
+      showAlert({
+        title: 'Revisá tu correo',
+        message: 'Te enviamos un enlace para restablecer tu contraseña.',
+        type: 'success',
+      });
+    } catch (err) {
+      switch (err?.code) {
+        case 'auth/user-not-found':
+          showAlert({ title: 'Correo no registrado', message: 'No encontramos una cuenta con ese correo.', type: 'error' });
+          break;
+        case 'auth/invalid-email':
+          showAlert({ title: 'Email inválido', message: 'Revisá el formato del correo.', type: 'error' });
+          break;
+        default:
+          console.error(err);
+          showAlert({ title: 'Error', message: 'No pudimos enviar el correo de recuperación.', type: 'error' });
+      }
     }
   };
 
@@ -76,8 +138,10 @@ export default function Login({ navigation }) {
 
   return (
     <View style={s.safe}>
-      {/* Header fijo */}
-      <HeaderBar onPressBell={() => Alert.alert('Notificaciones', 'Próximamente.')} bottomSpacing={16} />
+      <HeaderBar
+        bottomSpacing={16}
+        showBell={false}
+      />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -85,15 +149,7 @@ export default function Login({ navigation }) {
         keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
       >
         <ScrollView
-          contentContainerStyle={[
-            s.scroll,
-            {
-              paddingHorizontal: SPACING.lg,
-              paddingBottom: SPACING.lg + BOTTOM_6P,
-              // CLAVE: Centrado vertical puro
-              justifyContent: 'center',
-            },
-          ]}
+          contentContainerStyle={[s.scroll, { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg + BOTTOM_6P, justifyContent: 'center' }]}
           keyboardShouldPersistTaps="handled"
         >
           <View style={s.centerWrap}>
@@ -103,7 +159,6 @@ export default function Login({ navigation }) {
               resizeMode="contain"
             />
 
-            {/* CLAVE: Contenedor del Formulario con estilo de TARJETA (formCard) */}
             <View style={s.formCard}>
               <Text style={s.title}>Iniciar sesión</Text>
 
@@ -123,7 +178,7 @@ export default function Login({ navigation }) {
               </View>
               {!!errors.email && <Text style={s.error}>{errors.email}</Text>}
 
-              {/* Password */}
+              {/* Contraseña */}
               <View style={s.field}>
                 <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
                 <TextInput
@@ -140,7 +195,7 @@ export default function Login({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Recuérdame + ¿Olvidó? */}
+              {/* Recordarme y Olvidó su contraseña */}
               <View style={s.rowRememberForgot}>
                 <Pressable style={s.rememberRow} onPress={() => setRemember(r => !r)}>
                   <View style={[s.checkbox, remember && s.checkboxOn]}>
@@ -149,12 +204,13 @@ export default function Login({ navigation }) {
                   <Text style={s.rememberText}>Recuérdame</Text>
                 </Pressable>
 
-                <TouchableOpacity onPress={() => Alert.alert('Recuperar', 'Implementaremos recuperación más adelante.')}>
+                {/* ✅ Hace funcional el enlace */}
+                <TouchableOpacity onPress={handleForgotPassword}>
                   <Text style={s.link}>¿Olvidó su contraseña?</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* CTA */}
+              {/* CTA Ingresar */}
               <TouchableOpacity
                 disabled={loading}
                 onPress={handleLogin}
@@ -164,7 +220,7 @@ export default function Login({ navigation }) {
                 <Text style={s.ctaText}>{loading ? 'Ingresando…' : 'Iniciar sesión'}</Text>
               </TouchableOpacity>
 
-              {/* Link a SignUp */}
+              {/* Ir a SignUp */}
               <View style={s.signupRow}>
                 <Text style={s.small}>¿No tenes cuenta?</Text>
                 <TouchableOpacity onPress={goToSignUp} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.signupBtn}>
@@ -175,25 +231,31 @@ export default function Login({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal de alerta */}
+      <ISDMAlert
+        visible={alert.visible}
+        title={alert.title}
+        message={alert.message}
+        type={alert.type}
+        onConfirm={alert.onConfirm}
+        onClose={() => setAlert(a => ({ ...a, visible: false }))}
+      />
     </View>
   );
 }
 
-// -------------------------------------------------------------------
-// ESTILOS UNIFICADOS
-// -------------------------------------------------------------------
+
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  // flexGrow: 1 y alignItems: 'center' es clave para el centrado horizontal en el ScrollView
-  scroll: { flexGrow: 1, alignItems: 'center' },
-
-  // CLAVE: Se elimina 'marginTop: -TOP_TWEAK' para centrado puro (como en Codigo 1)
+  safe:
+  { flex: 1, backgroundColor: COLORS.bg },
+  scroll:
+  { flexGrow: 1, alignItems: 'center' },
   centerWrap: { width: '100%', alignItems: 'center' },
-  logo: { width: 140, height: 140 },
-  // Se añade 'textAlign: 'center'' para el título dentro de la tarjeta
-  title: { fontSize: 26, fontWeight: '800', marginBottom: SPACING.md, color: COLORS.text, textAlign: 'center' },
-
-  // CLAVE: Estilo de la tarjeta del formulario (tomado del Codigo 1)
+  logo:
+  { width: 140, height: 140 },
+  title:
+  { fontSize: 26, fontWeight: '800', marginBottom: SPACING.md, color: COLORS.text, textAlign: 'center' },
   formCard: {
     width: '100%',
     backgroundColor: 'hsla(300, 33%, 99%, 1.00)',
@@ -220,10 +282,11 @@ const s = StyleSheet.create({
   fieldError: { borderColor: COLORS.error },
   input: { color: COLORS.text, fontSize: 16, padding: 0 },
   leftIcon: { position: 'absolute', left: 12 },
-  rightIcon: { position: 'absolute', right: 12 },
-
-  error: { width: '100%', color: COLORS.error, fontSize: 12, marginTop: 6 },
-
+  rightIcon:
+  { position: 'absolute', right: 12 },
+  
+  error:
+  { width: '100%', color: COLORS.error, fontSize: 12, marginTop: 6 },
   rowRememberForgot: {
     width: '100%',
     marginTop: SPACING.sm,
@@ -241,11 +304,11 @@ const s = StyleSheet.create({
   },
   checkboxOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   rememberText: { color: COLORS.text },
-
-  link: { color: '#2563eb' },
+  link:
+  { color: '#2563eb' },
   small: { color: COLORS.text, fontSize: 14, lineHeight: 20 },
-  linkInline: { color: '#2563eb', fontSize: 14, lineHeight: 20 },
-
+  linkInline:
+  { color: '#2563eb', fontSize: 14, lineHeight: 20 },
   cta: {
     width: '50%',
     alignSelf: 'center',
@@ -259,13 +322,6 @@ const s = StyleSheet.create({
     ...Platform.select({ default: { shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 } }),
   },
   ctaText: { color: '#fff', fontWeight: '800' },
-
-  signupRow: {
-    marginTop: SPACING.xl,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    gap: 6,
-  },
+  signupRow: { marginTop: SPACING.xl, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6 },
   signupBtn: { paddingHorizontal: 2, paddingVertical: 2 },
 });

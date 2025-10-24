@@ -27,9 +27,12 @@ export default function HeaderBar({
 
         <Text style={s.title} numberOfLines={1}>{title}</Text>
 
-        <TouchableOpacity onPress={onPressBell} style={s.rightBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-          <Ionicons name="notifications-outline" size={18} color="#fff" />
-        </TouchableOpacity>
+        {/* Renderizar campana solo si hay handler */}
+        {onPressBell ? (
+          <TouchableOpacity onPress={onPressBell} style={s.rightBtn} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Ionicons name="notifications-outline" size={18} color="#fff" />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </SafeAreaView>
   );
