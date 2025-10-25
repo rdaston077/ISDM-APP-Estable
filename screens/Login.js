@@ -1,3 +1,4 @@
+// screens/Login.js
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, Image,
@@ -43,7 +44,8 @@ export default function Login({ navigation }) {
       try {
         const remembered = await AsyncStorage.getItem('rememberMe'); // 'true' | 'false' | null
         if (mounted && remembered === 'true' && auth.currentUser) {
-          navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+          // ⬇️ antes iba a 'Home' — ahora a 'Tabs'
+          navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
         }
       } catch (e) {
         // no-op
@@ -53,7 +55,6 @@ export default function Login({ navigation }) {
   }, [navigation]);
 
   const handleLogin = async () => {
-
     if (!email || !password) {
       setErrors({ email: '' });
       showAlert({ title: 'Todos los campos son obligatorios', type: 'warning' });
@@ -73,10 +74,12 @@ export default function Login({ navigation }) {
       // Guardar flag de "Recuérdame"
       await AsyncStorage.setItem('rememberMe', remember ? 'true' : 'false');
 
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      // ⬇️ antes 'Home' — ahora 'Tabs'
+      navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+      // opcional: forzar mostrar el tab Inicio
+      // navigation.navigate('Tabs', { screen: 'Inicio' });
 
-    } catch (err)
-    {
+    } catch (err) {
       switch (err?.code) {
         case 'auth/user-not-found':
           showAlert({ title: 'Correo no registrado', message: 'Ese correo no está registrado.', type: 'error' });
@@ -138,10 +141,7 @@ export default function Login({ navigation }) {
 
   return (
     <View style={s.safe}>
-      <HeaderBar
-        bottomSpacing={16}
-        showBell={false}
-      />
+      <HeaderBar bottomSpacing={16} showBell={false} />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -204,7 +204,6 @@ export default function Login({ navigation }) {
                   <Text style={s.rememberText}>Recuérdame</Text>
                 </Pressable>
 
-                {/* ✅ Hace funcional el enlace */}
                 <TouchableOpacity onPress={handleForgotPassword}>
                   <Text style={s.link}>¿Olvidó su contraseña?</Text>
                 </TouchableOpacity>
@@ -245,17 +244,12 @@ export default function Login({ navigation }) {
   );
 }
 
-
 const s = StyleSheet.create({
-  safe:
-  { flex: 1, backgroundColor: COLORS.bg },
-  scroll:
-  { flexGrow: 1, alignItems: 'center' },
+  safe: { flex: 1, backgroundColor: COLORS.bg },
+  scroll: { flexGrow: 1, alignItems: 'center' },
   centerWrap: { width: '100%', alignItems: 'center' },
-  logo:
-  { width: 140, height: 140 },
-  title:
-  { fontSize: 26, fontWeight: '800', marginBottom: SPACING.md, color: COLORS.text, textAlign: 'center' },
+  logo: { width: 140, height: 140 },
+  title: { fontSize: 26, fontWeight: '800', marginBottom: SPACING.md, color: COLORS.text, textAlign: 'center' },
   formCard: {
     width: '100%',
     backgroundColor: 'hsla(300, 33%, 99%, 1.00)',
@@ -266,7 +260,6 @@ const s = StyleSheet.create({
     shadowRadius: 8,
     elevation: 1,
   },
-
   field: {
     width: '100%',
     backgroundColor: '#f8fafc',
@@ -282,11 +275,8 @@ const s = StyleSheet.create({
   fieldError: { borderColor: COLORS.error },
   input: { color: COLORS.text, fontSize: 16, padding: 0 },
   leftIcon: { position: 'absolute', left: 12 },
-  rightIcon:
-  { position: 'absolute', right: 12 },
-  
-  error:
-  { width: '100%', color: COLORS.error, fontSize: 12, marginTop: 6 },
+  rightIcon: { position: 'absolute', right: 12 },
+  error: { width: '100%', color: COLORS.error, fontSize: 12, marginTop: 6 },
   rowRememberForgot: {
     width: '100%',
     marginTop: SPACING.sm,
@@ -304,11 +294,9 @@ const s = StyleSheet.create({
   },
   checkboxOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   rememberText: { color: COLORS.text },
-  link:
-  { color: '#2563eb' },
+  link: { color: '#2563eb' },
   small: { color: COLORS.text, fontSize: 14, lineHeight: 20 },
-  linkInline:
-  { color: '#2563eb', fontSize: 14, lineHeight: 20 },
+  linkInline: { color: '#2563eb', fontSize: 14, lineHeight: 20 },
   cta: {
     width: '50%',
     alignSelf: 'center',

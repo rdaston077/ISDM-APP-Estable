@@ -12,12 +12,12 @@ const Stack = createNativeStackNavigator();
 export default function Navigation() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Tabs" screenOptions={{ headerShown: false }}>
+        {/* Arranca directamente en Tabs (Home, Estudiantes, Perfil, etc.) */}
+        <Stack.Screen name="Tabs" component={Tabs} />
+        {/* Desde Home se puede navegar a Login o SignUp */}
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="SignUp" component={SignUp} />
-        {/* Contenedor de tabs (Inicio, Estudiantes, Perfil, Cerrar sesión).
-            Dentro del tab “Inicio” está el HomeStack con Home, Carreras y Contacto. */}
-        <Stack.Screen name="Home" component={Tabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );

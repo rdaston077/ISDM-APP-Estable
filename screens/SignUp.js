@@ -183,7 +183,7 @@ export default function SignUp({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={s.link}>Volver al inicio</Text>
+            <Text style={s.link}>Volver a inicio de sesión</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

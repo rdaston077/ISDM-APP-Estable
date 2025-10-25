@@ -1,5 +1,5 @@
 // screens/Home.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,9 @@ import {
 import HeaderBar from '../components/HeaderBar';
 import { COLORS } from '../constants/colors';
 import { SPACING } from '../constants/spacing';
-
+import { auth } from '../src/config/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
+import WelcomeToast from '../components/WelcomeToast';
 
 const getSource = (img) => (typeof img === 'string' ? { uri: img } : img);
 
@@ -28,7 +30,6 @@ const HERO = {
   image: require('../assets/home/hero-inscripciones.jpg'),
 };
 
-
 const STATS = [
   { id: 'k1', number: '6', label: 'Carreras con propósito' },
   { id: 'k2', number: '2', label: 'Carreras 100% virtual' },
@@ -39,16 +40,53 @@ const STATS = [
 const WHY_US = ['Enfoque Especializado', 'Trayectoria Comprobada', 'Flexibilidad Moderna', 'Comunidad Cercana'];
 
 export default function Home({ navigation }) {
+  const [user, setUser] = useState(auth.currentUser);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [welcomedOnce, setWelcomedOnce] = useState(false); // evita repetir
+
+  // Suscripción correcta a cambios de auth
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, setUser);
+    return () => unsub();
+  }, []);
+
+  // Mostrar toast al montar si ya hay usuario, o cuando pase de null -> usuario
+  useEffect(() => {
+    if (user && !welcomedOnce) {
+      setShowWelcome(true);
+      setWelcomedOnce(true);
+    }
+  }, [user, welcomedOnce]);
+
   return (
     <View style={s.safe}>
       <HeaderBar title="Instituto Superior del Milagro" onPressBell={() => {}} bottomSpacing={12} showBack={false} />
 
+      {/* Toast de bienvenida (2.5s) */}
+      <WelcomeToast
+        visible={showWelcome}
+        text={`¡Bienvenido, ${user?.displayName || 'usuario'}!`}
+        onHide={() => setShowWelcome(false)}
+        duration={2500}
+      />
+
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <View style={s.centerWrap}>
-          
-          <View style={s.welcomeRow}>
-            <Image source={require('../assets/logo.png')} style={s.smallSeal} resizeMode="contain" />
-            <Text style={s.h1}>Bienvenido</Text>
+          {/* Bienvenida: logo centrado, texto y botón opcional */}
+          <View style={s.welcomeBlock}>
+            <Image source={require('../assets/logo.png')} style={s.logoCenter} resizeMode="contain" />
+            <Text style={s.h1Center}>Bienvenido</Text>
+
+            {/* Botón solo si no hay sesión */}
+            {!user && (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={s.loginBtn}
+                onPress={() => navigation.navigate('Login')}
+              >
+                <Text style={s.loginBtnText}>Iniciar sesión</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* HERO */}
@@ -109,7 +147,6 @@ export default function Home({ navigation }) {
             </View>
           </View>
 
-
           <View style={{ height: SPACING.xl }} />
         </View>
       </ScrollView>
@@ -125,10 +162,20 @@ const s = StyleSheet.create({
   scroll: { alignItems: 'center', paddingBottom: SPACING.lg },
   centerWrap: { width: '100%', maxWidth: MAX_CONTENT, paddingHorizontal: COL_PAD },
 
-  welcomeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: SPACING.sm },
-  smallSeal: { width: 80, height: 80 },
-  h1: { fontSize: 22, fontWeight: '800', color: COLORS.text },
+  welcomeBlock: { alignItems: 'center', marginBottom: SPACING.sm },
+  logoCenter: { width: 100, height: 100 },
+  h1Center: { fontSize: 32, fontWeight: '800', color: COLORS.text, marginTop: 6, textAlign: 'center' },
 
+  loginBtn: {
+    marginTop: SPACING.sm,
+    backgroundColor: '#7c2325',
+    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginBtnText: { color: '#fff', fontWeight: '700' },
 
   hero: {
     width: '100%',
@@ -174,7 +221,6 @@ const s = StyleSheet.create({
   careerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end', padding: 12 },
   careerTitle: { color: '#fff', fontWeight: '800', fontSize: 12 },
 
-
   statsWrap: {
     backgroundColor: '#fff',
     borderRadius: CARD_RADIUS,
@@ -192,7 +238,6 @@ const s = StyleSheet.create({
   statCard: { width: '48%', backgroundColor: '#fafafa', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 10, alignItems: 'center' },
   statNumber: { fontWeight: '800', color: COLORS.text, fontSize: 18 },
   statLabel: { color: '#6b7280', fontSize: 12, textAlign: 'center', marginTop: 4 },
-
 
   whyWrap: {
     backgroundColor: '#fff',
