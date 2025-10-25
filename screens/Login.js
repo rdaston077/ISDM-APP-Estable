@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, Image,
   TouchableOpacity, Platform, KeyboardAvoidingView,
-  ScrollView, Dimensions, Pressable,
+  Pressable, ActivityIndicator, ScrollView,
+  ImageBackground
 } from 'react-native';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../src/config/firebaseConfig';
@@ -15,19 +16,13 @@ import HeaderBar from '../components/HeaderBar';
 import ISDMAlert from '../components/ISDMAlert';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const WIN_H = Dimensions.get('window').height;
-
-const TOP_TWEAK = Math.max(16, Math.min(80, Math.round(WIN_H * 0.05)));
-const LOGO_GAP = Math.max(8, Math.min(96, Math.round(WIN_H * 0.03)));
-const BOTTOM_6P = Math.max(12, Math.round(WIN_H * 0));
-
 export default function Login({ navigation }) {
-  const [email, setEmail]       = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [errors, setErrors]     = useState({ email: '' });
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({ email: '' });
 
   // --- ALERTA personalizada ---
   const [alert, setAlert] = useState({
@@ -42,9 +37,8 @@ export default function Login({ navigation }) {
     let mounted = true;
     (async () => {
       try {
-        const remembered = await AsyncStorage.getItem('rememberMe'); // 'true' | 'false' | null
+        const remembered = await AsyncStorage.getItem('rememberMe');
         if (mounted && remembered === 'true' && auth.currentUser) {
-          // ⬇️ antes iba a 'Home' — ahora a 'Tabs'
           navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
         }
       } catch (e) {
@@ -71,13 +65,9 @@ export default function Login({ navigation }) {
 
       await signInWithEmailAndPassword(auth, emailNorm, password);
 
-      // Guardar flag de "Recuérdame"
       await AsyncStorage.setItem('rememberMe', remember ? 'true' : 'false');
 
-      // ⬇️ antes 'Home' — ahora 'Tabs'
       navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
-      // opcional: forzar mostrar el tab Inicio
-      // navigation.navigate('Tabs', { screen: 'Inicio' });
 
     } catch (err) {
       switch (err?.code) {
@@ -140,98 +130,119 @@ export default function Login({ navigation }) {
   const goToSignUp = () => navigation.navigate('SignUp');
 
   return (
-    <View style={s.safe}>
-      <HeaderBar bottomSpacing={16} showBell={false} />
+    <ImageBackground 
+      source={require('../assets/classroom_background.png')} 
+      style={s.backgroundContainer}
+      imageStyle={s.backgroundImage} 
+    >
+      <View style={s.overlay}>
+        {/* Header original */}
+        <HeaderBar 
+          bottomSpacing={10} 
+          showBell={false} 
+        />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
-      >
-        <ScrollView
-          contentContainerStyle={[s.scroll, { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg + BOTTOM_6P, justifyContent: 'center' }]}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          style={s.keyboardAvoiding}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
         >
-          <View style={s.centerWrap}>
-            <Image
-              source={require('../assets/logo.png')}
-              style={[s.logo, { marginBottom: SPACING.md + LOGO_GAP }]}
-              resizeMode="contain"
-            />
-
-            <View style={s.formCard}>
-              <Text style={s.title}>Iniciar sesión</Text>
-
-              {/* Email */}
-              <View style={[s.field, errors.email && s.fieldError]}>
-                <MaterialIcons name="email" size={20} color="#6b7280" style={s.leftIcon} />
-                <TextInput
-                  style={s.input}
-                  placeholder="Correo electrónico"
-                  placeholderTextColor="#6b7280"
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  value={email}
-                  onChangeText={setEmail}
-                  returnKeyType="next"
+          <ScrollView
+            style={s.scrollView}
+            contentContainerStyle={s.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={s.content}>
+              {/* Logo */}
+              <View style={s.logoContainer}>
+                <Image
+                  source={require('../assets/logo.png')}
+                  style={s.logo}
+                  resizeMode="contain"
                 />
               </View>
-              {!!errors.email && <Text style={s.error}>{errors.email}</Text>}
 
-              {/* Contraseña */}
-              <View style={s.field}>
-                <Ionicons name="lock-closed" size={20} color="#6b7280" style={s.leftIcon} />
-                <TextInput
-                  style={s.input}
-                  placeholder="Ingrese su contraseña"
-                  placeholderTextColor="#6b7280"
-                  secureTextEntry={!showPass}
-                  value={password}
-                  onChangeText={setPassword}
-                  returnKeyType="done"
-                />
-                <TouchableOpacity style={s.rightIcon} onPress={() => setShowPass(v => !v)}>
-                  <MaterialCommunityIcons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6b7280" />
+              {/* Formulario */}
+              <View style={s.formCard}>
+                <Text style={s.title}>Iniciar sesión</Text>
+
+                {/* Email */}
+                <View style={[s.field, errors.email && s.fieldError]}>
+                  <MaterialIcons name="email" size={20} color="#6B7280" style={s.leftIcon} />
+                  <TextInput
+                    style={s.input}
+                    placeholder="Correo electrónico"
+                    placeholderTextColor="#9CA3AF"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    value={email}
+                    onChangeText={setEmail}
+                    returnKeyType="next"
+                  />
+                </View>
+                {!!errors.email && <Text style={s.error}>{errors.email}</Text>}
+
+                {/* Contraseña */}
+                <View style={[s.field, { marginTop: SPACING.sm }]}>
+                  <Ionicons name="lock-closed" size={20} color="#6B7280" style={s.leftIcon} />
+                  <TextInput
+                    style={s.input}
+                    placeholder="Ingrese su contraseña"
+                    placeholderTextColor="#9CA3AF"
+                    secureTextEntry={!showPass}
+                    value={password}
+                    onChangeText={setPassword}
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                  />
+                  <TouchableOpacity style={s.rightIcon} onPress={() => setShowPass(v => !v)}>
+                    <MaterialCommunityIcons name={showPass ? 'eye-outline' : 'eye-off-outline'} size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Recordarme y Olvidó su contraseña */}
+                <View style={s.rowRememberForgot}>
+                  <Pressable style={s.rememberRow} onPress={() => setRemember(r => !r)}>
+                    <View style={[s.checkbox, remember && s.checkboxOn]}>
+                      {remember && <Ionicons name="checkmark" size={14} color="#fff" />}
+                    </View>
+                    <Text style={s.rememberText}>Recuérdame</Text>
+                  </Pressable>
+
+                  <TouchableOpacity onPress={handleForgotPassword}>
+                    <Text style={s.link}>¿Olvidó su contraseña?</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* CTA Ingresar */}
+                <TouchableOpacity
+                  disabled={loading}
+                  onPress={handleLogin}
+                  activeOpacity={0.8}
+                  style={[s.cta, loading && { opacity: 0.7 }]}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={s.ctaText}>Iniciar sesión</Text>
+                  )}
                 </TouchableOpacity>
-              </View>
 
-              {/* Recordarme y Olvidó su contraseña */}
-              <View style={s.rowRememberForgot}>
-                <Pressable style={s.rememberRow} onPress={() => setRemember(r => !r)}>
-                  <View style={[s.checkbox, remember && s.checkboxOn]}>
-                    {remember && <Ionicons name="checkmark" size={14} color="#fff" />}
-                  </View>
-                  <Text style={s.rememberText}>Recuérdame</Text>
-                </Pressable>
-
-                <TouchableOpacity onPress={handleForgotPassword}>
-                  <Text style={s.link}>¿Olvidó su contraseña?</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* CTA Ingresar */}
-              <TouchableOpacity
-                disabled={loading}
-                onPress={handleLogin}
-                activeOpacity={0.9}
-                style={[s.cta, loading && { opacity: 0.7 }]}
-              >
-                <Text style={s.ctaText}>{loading ? 'Ingresando…' : 'Iniciar sesión'}</Text>
-              </TouchableOpacity>
-
-              {/* Ir a SignUp */}
-              <View style={s.signupRow}>
-                <Text style={s.small}>¿No tenes cuenta?</Text>
-                <TouchableOpacity onPress={goToSignUp} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={s.signupBtn}>
-                  <Text style={s.linkInline}>Crear una cuenta</Text>
-                </TouchableOpacity>
+                {/* Ir a SignUp */}
+                <View style={s.signupRow}>
+                  <Text style={s.small}>¿No tenes cuenta?</Text>
+                  <TouchableOpacity onPress={goToSignUp} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={s.linkInline}>Crear una cuenta</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
 
-      {/* Modal de alerta */}
+      {/* Modal de alerta personalizada */}
       <ISDMAlert
         visible={alert.visible}
         title={alert.title}
@@ -240,76 +251,177 @@ export default function Login({ navigation }) {
         onConfirm={alert.onConfirm}
         onClose={() => setAlert(a => ({ ...a, visible: false }))}
       />
-    </View>
+    </ImageBackground>
   );
 }
 
+// -------------------------------------------------------------------
+// ESTILOS CON SCROLL VIEW
+// -------------------------------------------------------------------
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.bg },
-  scroll: { flexGrow: 1, alignItems: 'center' },
-  centerWrap: { width: '100%', alignItems: 'center' },
-  logo: { width: 140, height: 140 },
-  title: { fontSize: 26, fontWeight: '800', marginBottom: SPACING.md, color: COLORS.text, textAlign: 'center' },
+  backgroundContainer: {
+    flex: 1,
+  },
+  backgroundImage: {
+    resizeMode: 'cover', 
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(249, 249, 249, 0.6)', 
+  },
+  
+  keyboardAvoiding: {
+    flex: 1,
+  },
+  
+  scrollView: {
+    flex: 1,
+  },
+  
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: SPACING.lg,
+  },
+  
+  // Contenido principal
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100%', // Asegura que ocupe toda la altura
+    paddingVertical: 20,
+  },
+  
+  // Logo
+  logoContainer: {
+    marginBottom: 20,
+  },
+  logo: { 
+    width: 250, 
+    height: 250, 
+  },
+  
+  // Formulario
   formCard: {
     width: '100%',
-    backgroundColor: 'hsla(300, 33%, 99%, 1.00)',
+    backgroundColor: '#FFFFFF', 
     padding: SPACING.lg,
-    borderRadius: 12,
+    borderRadius: 16, 
     shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 20, // Espacio en la parte inferior para el scroll
   },
+  
+  title: { 
+    fontSize: 24, 
+    fontWeight: '700', 
+    marginBottom: SPACING.md, 
+    color: '#333333', 
+    textAlign: 'center' 
+  },
+
   field: {
     width: '100%',
-    backgroundColor: '#f8fafc',
-    borderColor: COLORS.border,
+    backgroundColor: '#FFFFFF', 
+    borderColor: '#D1D5DB', 
     borderWidth: 1,
     borderRadius: 10,
     marginTop: SPACING.sm,
-    paddingLeft: 40,
-    paddingRight: 40,
-    height: 48,
-    justifyContent: 'center',
+    height: 50, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md, 
   },
-  fieldError: { borderColor: COLORS.error },
-  input: { color: COLORS.text, fontSize: 16, padding: 0 },
-  leftIcon: { position: 'absolute', left: 12 },
-  rightIcon: { position: 'absolute', right: 12 },
-  error: { width: '100%', color: COLORS.error, fontSize: 12, marginTop: 6 },
+  fieldError: { borderColor: '#dc2626' },
+  
+  leftIcon: { marginRight: 12 },
+  rightIcon: { 
+    position: 'absolute', 
+    right: SPACING.md, 
+    padding: 4 
+  }, 
+
+  input: { 
+    flex: 1, 
+    color: '#333333', 
+    fontSize: 16, 
+    paddingVertical: 0, 
+  },
+  error: { 
+    width: '100%', 
+    color: '#dc2626', 
+    fontSize: 12, 
+    marginTop: 4 
+  },
+
   rowRememberForgot: {
     width: '100%',
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.sm,
+    marginTop: SPACING.md, 
+    marginBottom: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   rememberRow: { flexDirection: 'row', alignItems: 'center' },
   checkbox: {
-    width: 20, height: 20, borderRadius: 4,
+    width: 20, height: 20, borderRadius: 6, 
     borderWidth: 1.5, borderColor: '#9ca3af',
-    backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#fff', 
+    justifyContent: 'center', 
+    alignItems: 'center',
     marginRight: 8,
   },
-  checkboxOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  rememberText: { color: COLORS.text },
-  link: { color: '#2563eb' },
-  small: { color: COLORS.text, fontSize: 14, lineHeight: 20 },
-  linkInline: { color: '#2563eb', fontSize: 14, lineHeight: 20 },
+  checkboxOn: { 
+    backgroundColor: COLORS.primary || '#2563eb', 
+    borderColor: COLORS.primary || '#2563eb' 
+  },
+  rememberText: { 
+    color: '#333333', 
+    fontSize: 14 
+  },
+
+  link: { 
+    color: COLORS.primary || '#2563eb', 
+    fontSize: 14, 
+    fontWeight: '600' 
+  }, 
+  small: { 
+    color: '#666666', 
+    fontSize: 14 
+  },
+  linkInline: { 
+    color: COLORS.primary || '#2563eb', 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
+
   cta: {
-    width: '50%',
-    alignSelf: 'center',
-    marginTop: SPACING.sm,
+    width: '100%',
+    marginTop: SPACING.md,
     marginBottom: SPACING.lg,
-    height: 46,
-    borderRadius: 10,
+    height: 50, 
+    borderRadius: 12, 
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    ...Platform.select({ default: { shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 } }),
+    backgroundColor: COLORS.primary || '#2563eb',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  ctaText: { color: '#fff', fontWeight: '800' },
-  signupRow: { marginTop: SPACING.xl, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 6 },
-  signupBtn: { paddingHorizontal: 2, paddingVertical: 2 },
+  ctaText: { 
+    color: '#fff', 
+    fontWeight: '800', 
+    fontSize: 16 
+  }, 
+
+  signupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
 });

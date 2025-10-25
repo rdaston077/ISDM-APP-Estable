@@ -41,7 +41,7 @@ export default function HeaderBar({
 const s = StyleSheet.create({
   safe: { backgroundColor: COLORS.primary },
   wrap: {
-    minHeight: 22,            // ↓ ~50%
+    minHeight: 2,            // ↓ ~50%
     paddingHorizontal: 8,     // ↓
     paddingVertical: 2,       // ↓
     backgroundColor: COLORS.primary,
