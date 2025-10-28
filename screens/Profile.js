@@ -19,7 +19,7 @@ export default function Profile({ navigation }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      // ⬇️ Importante: NO redirigir a Login cuando !u
+      // Importante: NO redirigir a Login cuando se cierra sesión aquí,
       // El flujo de Tabs maneja qué hacer (volver a Inicio).
     });
     return () => unsub();
@@ -68,7 +68,7 @@ export default function Profile({ navigation }) {
     }
   };
 
-  // ⛔ Vista bloqueada si no hay sesión
+  // Vista bloqueada si no hay sesión
   if (!user) {
     return (
       <View style={s.safe}>

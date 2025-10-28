@@ -39,6 +39,7 @@ function HomeStackNav() {
 export default function Tabs() {
   const [user, setUser] = useState(auth.currentUser);
   const [lockAlert, setLockAlert] = useState({ visible: false });
+  const [confirmLogout, setConfirmLogout] = useState({ visible: false, nav: null });
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, setUser);
@@ -67,7 +68,11 @@ export default function Tabs() {
             if (route.name === 'Inicio') return <Ionicons name="home-outline" size={size} color={color} />;
             if (route.name === 'Estudiantes') return <Ionicons name="people-outline" size={size} color={color} />;
             if (route.name === 'Perfil') return <Ionicons name="person-outline" size={size} color={color} />;
-            if (route.name === 'Cerrar sesión') return <MaterialCommunityIcons name="logout" size={size} color={color} />;
+            if (route.name === 'Auth') {
+              return user
+                ? <MaterialCommunityIcons name="logout" size={size} color={color} />
+                : <MaterialCommunityIcons name="login" size={size} color={color} />;
+            }
             return null;
           },
         })}
@@ -102,27 +107,27 @@ export default function Tabs() {
           }}
         />
 
+        {/* Tab dinámico: Iniciar sesión / Cerrar sesión con confirmación */}
         <Tab.Screen
-          name="Cerrar sesión"
+          name="Auth"
           component={VoidScreen}
+          options={{
+            tabBarLabel: user ? 'Cerrar sesión' : 'Iniciar sesión',
+          }}
           listeners={({ navigation }) => ({
-            tabPress: async (e) => {
+            tabPress: (e) => {
               e.preventDefault();
-              if (!user) return; // sin sesión: no hace nada
-              try {
-                await signOut(auth);
-                await AsyncStorage.removeItem('rememberMe');
-                // dirigir al tab Inicio
-                navigation.navigate('Inicio');
-              } catch {
-                // opcional: podrías mostrar un ISDMAlert de error si lo deseas
+              if (!user) {
+                navigation.getParent()?.navigate('Login');
+                return;
               }
+              setConfirmLogout({ visible: true, nav: navigation });
             },
           })}
         />
       </Tab.Navigator>
 
-      {/* Modal consistente al diseño para requerir login */}
+      {/* Modal para requerir login */}
       <ISDMAlert
         visible={lockAlert.visible}
         title="Iniciá sesión"
@@ -131,6 +136,26 @@ export default function Tabs() {
         confirmText="Aceptar"
         onConfirm={() => setLockAlert({ visible: false })}
         onClose={() => setLockAlert({ visible: false })}
+      />
+
+      {/* Confirmación de cierre de sesión */}
+      <ISDMAlert
+        visible={confirmLogout.visible}
+        title="Cerrar sesión"
+        message="¿Desea cerrar la sesión actual?"
+        type="warning"
+        cancelText="Cancelar"
+        confirmText="Aceptar"
+        onCancel={() => setConfirmLogout({ visible: false, nav: null })}
+        onConfirm={async () => {
+          try {
+            await signOut(auth);
+            await AsyncStorage.removeItem('rememberMe');
+            confirmLogout.nav?.navigate('Inicio');
+          } finally {
+            setConfirmLogout({ visible: false, nav: null });
+          }
+        }}
       />
     </>
   );
