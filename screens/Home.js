@@ -52,6 +52,7 @@ export default function Home({ navigation }) {
   const [showSecondTitle, setShowSecondTitle] = useState(false);
   const [showTitles, setShowTitles] = useState(true);
   const [currentLoop, setCurrentLoop] = useState(0);
+  const [isMuted, setIsMuted] = useState(true); // Nuevo estado para controlar el mute
   
   // Hook para detectar si la pantalla está enfocada
   const isFocused = useIsFocused();
@@ -175,6 +176,14 @@ export default function Home({ navigation }) {
     }
   };
 
+  // Nueva función para alternar el mute
+  const toggleMute = async () => {
+    if (videoRef.current) {
+      await videoRef.current.setIsMutedAsync(!isMuted);
+      setIsMuted(!isMuted);
+    }
+  };
+
   return (
     <View style={s.safe}>
       <HeaderBar
@@ -225,6 +234,7 @@ export default function Home({ navigation }) {
                 resizeMode="cover"
                 shouldPlay={isFocused} // Solo reproducir si está en foco
                 isLooping={true}
+                isMuted={isMuted} // Control del mute
                 onPlaybackStatusUpdate={status => {
                   setStatus(() => status);
                   if (status.isLoaded) {
@@ -244,7 +254,7 @@ export default function Home({ navigation }) {
                         INSTITUTO SUPERIOR{'\n'}DEL MILAGRO
                       </Text>
                       <Text style={s.subTitle}>
-                        2024
+                        2025
                       </Text>
                     </Animated.View>
                   )}
@@ -282,6 +292,16 @@ export default function Home({ navigation }) {
               >
                 <Text style={s.controlText}>
                   {status.isPlaying ? '⏸️' : '▶️'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Botón de mute */}
+              <TouchableOpacity
+                style={s.muteButton}
+                onPress={toggleMute}
+              >
+                <Text style={s.controlText}>
+                  {isMuted ? '🔇' : '🔊'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -488,6 +508,18 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 15,
     right: 15,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 12,
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  muteButton: {
+    position: 'absolute',
+    bottom: 15,
+    right: 75, // Colocado a la izquierda del botón de play/pause
     backgroundColor: 'rgba(0,0,0,0.7)',
     padding: 12,
     borderRadius: 25,

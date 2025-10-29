@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, Image, TouchableOpacity,
-  Platform, Dimensions, FlatList
+  Platform, Dimensions, FlatList, Modal, ScrollView
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import HeaderBar from '../components/HeaderBar';
@@ -12,7 +12,7 @@ import { subscribeStudents, removeStudent } from '../src/services/students';
 import ISDMAlert from '../components/ISDMAlert';
 
 const TAB_GAP_6P = Math.round(Dimensions.get('window').height * 0.06);
-const FAB_DOWN_4P = Math.round(Dimensions.get('window').height * 0.04); // ↓ mover FAB ~4%
+const FAB_DOWN_4P = Math.round(Dimensions.get('window').height * 0.04);
 
 // Chip de estado
 function StatusChip({ value }) {
@@ -29,9 +29,59 @@ function StatusChip({ value }) {
   );
 }
 
+// Modal de filtros
+function FilterModal({ visible, title, options, selected, onSelect, onClose }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#374151" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalOptions}>
+            {options.map((option, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.optionItem,
+                  selected === option.value && styles.optionSelected
+                ]}
+                onPress={() => onSelect(option.value)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  selected === option.value && styles.optionTextSelected
+                ]}>
+                  {option.label}
+                </Text>
+                {selected === option.value && (
+                  <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function Students({ navigation }) {
   const [query, setQuery] = useState('');
   const [items, setItems] = useState([]);
+  
+  // Filtros
+  const [sortBy, setSortBy] = useState('a-z');
+  const [statusFilter, setStatusFilter] = useState('todos');
+  const [careerFilter, setCareerFilter] = useState('todas');
+  
+  // Modales
+  const [showSortModal, setShowSortModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showCareerModal, setShowCareerModal] = useState(false);
 
   // ISDMAlert states
   const [showConfirm, setShowConfirm] = useState(false);
@@ -44,15 +94,68 @@ export default function Students({ navigation }) {
     return () => unsub && unsub();
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((s) => {
-      const name = `${s.firstName ?? ''} ${s.lastName ?? ''}`.toLowerCase();
-      const dni = String(s.dni ?? '').replace(/\./g, '').toLowerCase();
-      return name.includes(q) || dni.includes(q);
+  // Opciones de filtros
+  const sortOptions = [
+    { label: 'A-Z', value: 'a-z' },
+    { label: 'Z-A', value: 'z-a' },
+    { label: 'Reciente', value: 'reciente' },
+    { label: 'Antiguo', value: 'antiguo' },
+  ];
+
+  const statusOptions = [
+    { label: 'Todos', value: 'todos' },
+    { label: 'Activo', value: 'activo' },
+    { label: 'Pendiente', value: 'pendiente' },
+    { label: 'Inactivo', value: 'inactivo' },
+  ];
+
+  const careerOptions = [
+    { label: 'Todas', value: 'todas' },
+    { label: 'Tec. Análisis de Sistemas', value: 'Tec. Análisis de Sistemas' },
+    { label: 'Profesorado de Inglés', value: 'Profesorado de Inglés' },
+    { label: 'Profesorado de Educación Inicial', value: 'Profesorado de Educación Inicial' },
+    { label: 'Profesorado de Educación Primaria', value: 'Profesorado de Educación Primaria' },
+    { label: 'Psicopedagogía', value: 'Psicopedagogía' },
+    { label: 'Educación Especial (Discapacidad Intelectual)', value: 'Educación Especial (Discapacidad Intelectual)' },
+  ];
+
+  const filteredAndSorted = useMemo(() => {
+    let result = items.filter((s) => {
+      // Filtro de búsqueda
+      const q = query.trim().toLowerCase();
+      if (q) {
+        const name = `${s.firstName ?? ''} ${s.lastName ?? ''}`.toLowerCase();
+        const dni = String(s.dni ?? '').replace(/\./g, '').toLowerCase();
+        if (!name.includes(q) && !dni.includes(q)) return false;
+      }
+
+      // Filtro de estado
+      if (statusFilter !== 'todos' && s.status !== statusFilter) return false;
+
+      // Filtro de carrera
+      if (careerFilter !== 'todas' && s.career !== careerFilter) return false;
+
+      return true;
     });
-  }, [items, query]);
+
+    // Ordenamiento
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'a-z':
+          return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+        case 'z-a':
+          return `${b.firstName} ${b.lastName}`.localeCompare(`${a.firstName} ${a.lastName}`);
+        case 'reciente':
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        case 'antiguo':
+          return (a.createdAt || 0) - (b.createdAt || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [items, query, sortBy, statusFilter, careerFilter]);
 
   const onView = (s) => navigation.navigate('StudentDetail', { id: s.id });
   const onEdit = (s) => navigation.navigate('StudentForm', { id: s.id });
@@ -73,6 +176,11 @@ export default function Students({ navigation }) {
       setErrorMsg('No se pudo eliminar');
       setShowError(true);
     }
+  };
+
+  const getFilterLabel = (value, options) => {
+    const option = options.find(opt => opt.value === value);
+    return option ? option.label : '';
   };
 
   const renderItem = ({ item: s }) => (
@@ -130,6 +238,7 @@ export default function Students({ navigation }) {
     <View style={styles.safe}>
       <HeaderBar title="Gestión de Alumnos" showBack={false} bottomSpacing={8} />
 
+      {/* Buscador */}
       <View style={styles.searchWrap}>
         <Ionicons name="search" size={18} color="#6b7280" style={{ marginRight: 8 }} />
         <TextInput
@@ -142,8 +251,43 @@ export default function Students({ navigation }) {
         />
       </View>
 
+      {/* Filtros */}
+      <View style={styles.filtersContainer}>
+        <TouchableOpacity 
+          style={styles.filterButton} 
+          onPress={() => setShowSortModal(true)}
+        >
+          <Text style={styles.filterText}>Orden: {getFilterLabel(sortBy, sortOptions)}</Text>
+          <Ionicons name="chevron-down" size={16} color="#6b7280" />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.filterButton} 
+          onPress={() => setShowStatusModal(true)}
+        >
+          <Text style={styles.filterText}>Estado: {getFilterLabel(statusFilter, statusOptions)}</Text>
+          <Ionicons name="chevron-down" size={16} color="#6b7280" />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.filterButton} 
+          onPress={() => setShowCareerModal(true)}
+        >
+          <Text style={styles.filterText}>Carrera: {getFilterLabel(careerFilter, careerOptions)}</Text>
+          <Ionicons name="chevron-down" size={16} color="#6b7280" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Contador */}
+      <View style={styles.counterContainer}>
+        <Text style={styles.counterText}>
+          Mostrando: {filteredAndSorted.length} de {items.length}
+        </Text>
+      </View>
+
+      {/* Lista */}
       <FlatList
-        data={filtered}
+        data={filteredAndSorted}
         keyExtractor={(it) => it.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: TAB_GAP_6P + SPACING.lg }}
@@ -157,6 +301,34 @@ export default function Students({ navigation }) {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
+
+      {/* Modales de filtros */}
+      <FilterModal
+        visible={showSortModal}
+        title="Ordenar por"
+        options={sortOptions}
+        selected={sortBy}
+        onSelect={setSortBy}
+        onClose={() => setShowSortModal(false)}
+      />
+
+      <FilterModal
+        visible={showStatusModal}
+        title="Filtrar por estado"
+        options={statusOptions}
+        selected={statusFilter}
+        onSelect={setStatusFilter}
+        onClose={() => setShowStatusModal(false)}
+      />
+
+      <FilterModal
+        visible={showCareerModal}
+        title="Filtrar por carrera"
+        options={careerOptions}
+        selected={careerFilter}
+        onSelect={setCareerFilter}
+        onClose={() => setShowCareerModal(false)}
+      />
 
       {/* Confirmar eliminación */}
       <ISDMAlert
@@ -199,33 +371,186 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: COLORS.text, fontSize: 14, padding: 0 },
   
-  card:
-  {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: '#fff',
-    borderRadius: CARD_RADIUS, borderWidth: 1, borderColor: '#eee', padding: 12, marginBottom: SPACING.md,
-    ...Platform.select({ android: { elevation: 1 }, default: { shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4 } }),
+  // Filtros
+  filtersContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
+    gap: 8,
   },
-  avatar: { width: 44, height: 44, borderRadius: 22, marginTop: 2 },
+  filterButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    height: 36,
+  },
+  filterText: {
+    fontSize: 12,
+    color: COLORS.text,
+    flex: 1,
+  },
+  
+  // Contador
+  counterContainer: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    marginBottom: SPACING.sm,
+  },
+  counterText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  
+  // Card (manteniendo el estilo original)
+  card: {
+    flexDirection: 'row', 
+    alignItems: 'flex-start', 
+    gap: 12, 
+    backgroundColor: '#fff',
+    borderRadius: CARD_RADIUS, 
+    borderWidth: 1, 
+    borderColor: '#eee', 
+    padding: 12, 
+    marginBottom: SPACING.md,
+    ...Platform.select({ 
+      android: { elevation: 1 }, 
+      default: { shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4 } 
+    }),
+  },
+  avatar: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    marginTop: 2 
+  },
   avatarPlaceholder: {
-    width: 44, height: 44, borderRadius: 22, marginTop: 2,
-    backgroundColor: '#e5e7eb', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#d1d5db',
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    marginTop: 2,
+    backgroundColor: '#e5e7eb', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderWidth: 1, 
+    borderColor: '#d1d5db',
   },
-  name: { color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 2 },
-  meta: { color: '#6b7280', fontSize: 12, lineHeight: 16 },
-  chip: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  chipText: { fontSize: 12, fontWeight: '700' },
-  actions: { marginLeft: 8, alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  name: { 
+    color: COLORS.text, 
+    fontSize: 16, 
+    fontWeight: '700', 
+    marginBottom: 2 
+  },
+  meta: { 
+    color: '#6b7280', 
+    fontSize: 12, 
+    lineHeight: 16 
+  },
+  chip: { 
+    alignSelf: 'flex-start', 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 999 
+  },
+  chipText: { 
+    fontSize: 12, 
+    fontWeight: '700' 
+  },
+  actions: { 
+    marginLeft: 8, 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    gap: 10 
+  },
   iconBtn: {
-    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb',
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb', 
+    borderWidth: 1, 
+    borderColor: '#e5e7eb',
   },
-  deleteRing: { borderColor: '#fecaca', backgroundColor: '#fef2f2' },
+  deleteRing: { 
+    borderColor: '#fecaca', 
+    backgroundColor: '#fef2f2' 
+  },
   fab: {
-    position: 'absolute', right: 20,
-    bottom: Math.max(12, TAB_GAP_6P + 24 - FAB_DOWN_4P), // ↓ 4% más abajo
-    width: 56, height: 56,
-    borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.primary,
-    ...Platform.select({ android: { elevation: 4 }, default: { shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6 } }),
+    position: 'absolute', 
+    right: 20,
+    bottom: Math.max(12, TAB_GAP_6P + 24 - FAB_DOWN_4P),
+    width: 56, 
+    height: 56,
+    borderRadius: 28, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: COLORS.primary,
+    ...Platform.select({ 
+      android: { elevation: 4 }, 
+      default: { shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6 } 
+    }),
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalOptions: {
+    maxHeight: 300,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  optionSelected: {
+    backgroundColor: '#f8fafc',
+  },
+  optionText: {
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  optionTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '500',
   },
 });

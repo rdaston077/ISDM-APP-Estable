@@ -5,6 +5,7 @@ import {
   Platform, KeyboardAvoidingView, TouchableOpacity,
   Keyboard,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import HeaderBar from '../components/HeaderBar';
 import { COLORS } from '../constants/colors';
 import { SPACING } from '../constants/spacing';
@@ -14,6 +15,16 @@ import ISDMAlert from '../components/ISDMAlert';
 // --- Regla: permitir solo letras (con acentos/ñ), espacios, guion y apóstrofo ---
 const onlyLetters = (s = '') =>
   s.replace(/[^A-Za-zÁÉÍÓÚÜáéíóúüÑñÀ-ÿ' -]/g, '');
+
+// Lista de carreras disponibles
+const CARRERAS = [
+  'Tec. Análisis de Sistemas',
+  'Profesorado de Inglés',
+  'Profesorado de Educación Inicial',
+  'Profesorado de Educación Primaria',
+  'Psicopedagogía',
+  'Educación Especial (Discapacidad Intelectual)',
+];
 
 export default function Contacto({ navigation }) {
   const [nombre, setNombre] = useState('');
@@ -35,7 +46,6 @@ export default function Contacto({ navigation }) {
   const handleSend = () => {
     if (sending) return;
     Keyboard.dismiss();
-    
 
     const vNombre = nombre.trim();
     const vMail = mail.trim().toLowerCase();
@@ -43,7 +53,6 @@ export default function Contacto({ navigation }) {
     const vProv = provincia.trim();
     const vCarr = carrera.trim();
     const vMsg = mensaje.trim();
-
 
     if (!vNombre || !vMail || !vTel || !vProv || !vCarr || !vMsg) {
       showAlert({ title: 'Todos los campos son obligatorios', type: 'warning' });
@@ -60,7 +69,7 @@ export default function Contacto({ navigation }) {
       setSending(false);
       showAlert({
         title: 'Enviado',
-        message: '¡Gracias! Te contactaremos a la brevedad.',
+        message: `¡Gracias ${vNombre}! Te contactaremos a la brevedad sobre ${vCarr}.`,
         type: 'success',
         onConfirm: () => {
           setAlert(a => ({ ...a, visible: false }));
@@ -127,16 +136,26 @@ export default function Contacto({ navigation }) {
             returnKeyType="next"
           />
 
-          {/*Carrera*/}
-          <Text style={s.label}>Carrera</Text>
-          <TextInput
-            style={s.input}
-            placeholder="Carrera de tu interés"
-            placeholderTextColor="#6b7280"
-            value={carrera}
-            onChangeText={setCarrera}
-            returnKeyType="next"
-          />
+          {/* Carrera - Picker con estilos PROBADOS de StudentForm */}
+          <Text style={s.label}>Carrera </Text>
+          <View style={s.pickerContainer}>
+            <Picker
+              mode="dropdown"
+              selectedValue={carrera}
+              onValueChange={(itemValue) => setCarrera(itemValue)}
+              dropdownIconColor={COLORS.primary}
+              style={s.picker}
+            >
+              <Picker.Item
+                label="Seleccionar carrera"
+                value=""
+                color="#9ca3af"
+              />
+              {CARRERAS.map((c) => (
+                <Picker.Item key={c} label={c} value={c} />
+              ))}
+            </Picker>
+          </View>
 
           {/*Mensaje*/}
           <Text style={s.label}>Mensaje</Text>
@@ -148,10 +167,10 @@ export default function Contacto({ navigation }) {
             onChangeText={setMensaje}
             multiline
             numberOfLines={4}
+            textAlignVertical="top"
           />
 
           <View style={{ height: SPACING.md }} />
-
 
           <TouchableOpacity
             style={[s.cta, sending && { opacity: 0.7 }]}
@@ -182,9 +201,26 @@ export default function Contacto({ navigation }) {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
-  scroll: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.lg },
-  header: { color: COLORS.text, fontWeight: '700', marginBottom: SPACING.md },
-  label: { color: COLORS.text, marginTop: SPACING.md, marginBottom: 6, fontWeight: '600' },
+  scroll: { 
+    paddingHorizontal: SPACING.lg, 
+    paddingTop: SPACING.md, 
+    paddingBottom: SPACING.lg 
+  },
+  header: { 
+    color: COLORS.text, 
+    fontWeight: '700', 
+    marginBottom: SPACING.md,
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  label: { 
+    color: COLORS.text, 
+    marginTop: SPACING.md, 
+    marginBottom: 6, 
+    fontWeight: '600',
+    fontSize: 14,
+  },
   input: {
     backgroundColor: '#f8fafc',
     borderColor: '#e5e7eb',
@@ -193,8 +229,34 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     height: 46,
     color: COLORS.text,
+    fontSize: 14,
   },
-  textarea: { height: 120, textAlignVertical: 'top', paddingTop: 12, paddingBottom: 12 },
+  textarea: { 
+    height: 120, 
+    textAlignVertical: 'top', 
+    paddingTop: 12, 
+    paddingBottom: 12,
+    fontSize: 14,
+  },
+  
+  // Picker: sin recortes (59 en Android, 48 iOS) - ESTILOS PROBADOS
+pickerContainer: {
+  backgroundColor: '#fff',
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: '#e5e7eb',
+  height: Platform.OS === 'android' ? 59 : 48,
+  paddingVertical: Platform.OS === 'android' ? 1 : 0,
+  marginBottom: SPACING.md,
+},
+picker: {
+  width: '100%',
+  height: '100%',
+  color: COLORS.text,
+  fontSize: 14, // ← AGREGAR ESTO para que sea igual a los inputs
+  marginTop: Platform.OS === 'android' ? -2 : 0,
+},
+  
   cta: {
     width: '50%',
     alignSelf: 'center',
@@ -203,6 +265,11 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: SPACING.lg,
   },
-  ctaText: { color: '#fff', fontWeight: '800' },
+  ctaText: { 
+    color: '#fff', 
+    fontWeight: '800',
+    fontSize: 16,
+  },
 });
